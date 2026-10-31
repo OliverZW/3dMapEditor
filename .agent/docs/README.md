@@ -6,7 +6,7 @@
 
 - 本机生产版可通过 `dist/start-editor.bat` 启动；版本更新记录位于 `dist/RELEASE_NOTES.txt`，构建与验证见[实施记录](implementation.md)。
 - 浏览器编辑器支持地形、地表、模型、树草、河流、据点、辖区、势力、撤销和工程保存；运行方法、实际验证及剩余差距见[实施记录](implementation.md)。
-- 当前源码已提供 v4 自包含备份及 `.map3dproj` 目录存储接口，不兼容旧包；第 2 步已增加 Electron 开发入口、Windows 原生目录适配及保存退出保护，第 3 步已增加首页、近期工程及示例创建，MSI 待后续步骤，见[地图工程规范](map-project-format.md)。
+- 当前源码已提供 v4 自包含备份及 `.map3dproj` 目录存储接口，不兼容旧包；已增加 Electron 开发入口、首页、自定义模型及地表材质导入，MSI 待后续步骤，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
 - 运行导出采用引擎数据协议 v2，游戏负责读取与呈现；真实 Cocos Creator 导入、材质和运行性能尚未验收。详见[导出协议](engine-export-spec.md)与[Cocos 适配](cocos-export.md)。
 - 完整地图性能和成品美术质量尚未验收；测试数据与限制见[实施记录](implementation.md)和[渲染优化](render-optimization.md)。
 

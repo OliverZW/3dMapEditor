@@ -111,6 +111,13 @@ export interface SurfaceImage {
   /** PNG 字节为不可变共享资源；内置描述在 IO 装配时补齐。 */
   bytes?: Uint8Array;
 }
+export interface SurfaceAsset {
+  id: string;
+  name: string;
+  meters: number;
+  color: SurfaceImage;
+  normal: SurfaceImage;
+}
 export interface WaterMaterialPack {
   version: 1;
   normal: SurfaceImage;
@@ -123,11 +130,13 @@ export interface SurfaceMaterialPack {
   source: string;
   layers: {
     id: SurfaceLayerId;
+    materialId?: string;
     name: string;
     meters: number;
     color: SurfaceImage;
     normal: SurfaceImage;
   }[];
+  library?: SurfaceAsset[];
   scale: number;
   detail: number;
   slopeRock: boolean;

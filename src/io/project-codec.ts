@@ -92,6 +92,11 @@ export function encodeProjectFiles(
         color: store(layer.color, 'surface'),
         normal: store(layer.normal, 'surface'),
       })),
+      library: surfaceMaterial.library?.map((asset) => ({
+        ...asset,
+        color: store(asset.color, 'surface'),
+        normal: store(asset.normal, 'surface'),
+      })),
     },
     waterMaterial: {
       ...waterMaterial,
@@ -190,6 +195,11 @@ export function decodeProjectFiles(
           ...layer,
           color: hydrate(layer.color, 'surface'),
           normal: hydrate(layer.normal, 'surface'),
+        })),
+        library: source.surfaceMaterial.library?.map((asset) => ({
+          ...asset,
+          color: hydrate(asset.color, 'surface'),
+          normal: hydrate(asset.normal, 'surface'),
         })),
       },
       waterMaterial: {

@@ -85,6 +85,8 @@ export class EditorViewport {
   private frame = 0;
   private disposed = false;
   private seenRevision = -1;
+  private seenSurfaceLayerPreview: EditorSession['surfaceLayerPreview'] = null;
+  private seenSurfacePreviewRevision = -1;
   private seenDoc: unknown;
   private riverKey = '';
   private instanceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -999,6 +1001,28 @@ export class EditorViewport {
     if (logicKey !== this.logicKey) {
       this.logicKey = logicKey;
       this.rebuildLogic();
+    }
+    if (
+      this.seenSurfaceLayerPreview !== this.session.surfaceLayerPreview ||
+      (this.session.surfaceLayerPreview !== null &&
+        this.seenSurfacePreviewRevision !== this.session.revision)
+    ) {
+      this.seenSurfaceLayerPreview = this.session.surfaceLayerPreview;
+      this.seenSurfacePreviewRevision = this.session.revision;
+      const preview = this.session.surfaceLayerPreview;
+      const doc = preview
+        ? {
+            ...this.session.doc,
+            surfaceMaterial: {
+              ...this.session.doc.surfaceMaterial,
+              layers: this.session.doc.surfaceMaterial.layers.map((layer, index) =>
+                index === preview.index ? { ...layer, ...preview.asset, id: layer.id } : layer,
+              ),
+            },
+          }
+        : this.session.doc;
+      this.surfaceMaterial.updateResources(doc);
+      this.surfaceCache?.setMaterialDocument(doc);
     }
     this.surfaceMaterial.updateSettings(
       this.session.surfacePreview ?? this.session.doc.surfaceMaterial,

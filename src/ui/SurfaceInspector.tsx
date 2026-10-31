@@ -1,8 +1,14 @@
 import { useEffect } from 'react';
 import type { EditorSession } from '../application/editor-session';
-import { Group, Slider } from './controls';
+import { Button, Group, Slider } from './controls';
 
-export function SurfaceInspector({ session }: { session: EditorSession }) {
+export function SurfaceInspector({
+  session,
+  onLibrary,
+}: {
+  session: EditorSession;
+  onLibrary: () => void;
+}) {
   const material = session.surfacePreview ?? session.doc.surfaceMaterial;
   useEffect(() => {
     const cancel = () => session.cancelSurface();
@@ -14,6 +20,11 @@ export function SurfaceInspector({ session }: { session: EditorSession }) {
   }, [session]);
   return (
     <Group title="地表材质" tag="SURFACE">
+      <p>
+        当前层：{['草地', '泥土', '岩石', '沙地'][session.brush.surfaceLayer]} ·{' '}
+        {session.doc.surfaceMaterial.layers[session.brush.surfaceLayer].name}
+      </p>
+      <Button onClick={onLibrary}>选择或导入材质</Button>
       <Slider
         label="纹理尺度"
         value={material.scale * 100}

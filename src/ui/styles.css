@@ -1919,3 +1919,36 @@ button:focus-visible,
   color: var(--danger);
   overflow-wrap: anywhere;
 }
+.surface-library {
+  display: grid;
+  gap: 12px;
+}
+.surface-library label {
+  display: grid;
+  gap: 5px;
+}
+.surface-library fieldset {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--control-border);
+  padding: 12px;
+}
+.surface-library-preview {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.surface-library-preview img {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.surface-library-preview p {
+  margin: 6px 0;
+}
+.modal-scrim:has(.surface-dialog) {
+  justify-content: flex-end;
+  background: #080f1840;
+  backdrop-filter: none;
+}

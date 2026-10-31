@@ -8,6 +8,8 @@ import { EditorSession } from '../src/application/editor-session';
 import { encodeProject, decodeProject } from '../src/io/project';
 import { imageHash, validateSurfacePng } from '../src/io/image-validation';
 import { prepareSurfaceDocument } from '../src/io/surface-resources';
+import { encodeProjectFiles, decodeProjectFiles } from '../src/io/project-codec';
+import { resourcePath } from '../src/io/project-resources';
 
 describe('四层地表材质、历史与工程 v4', () => {
   it('图片 SHA-256 与标准向量一致', () => {
@@ -40,7 +42,7 @@ describe('四层地表材质、历史与工程 v4', () => {
       layer.color.width = 4096;
       layer.color.height = 4096;
     });
-    expect(() => validateDocument(invalid)).toThrow('预算');
+    expect(() => validateDocument(invalid)).toThrow('尺寸');
   });
   it('一轮连续调参只提交一条历史，预览取消不修改文档，撤销重做保持权重和高度', () => {
     const session = new EditorSession();
@@ -76,6 +78,55 @@ describe('四层地表材质、历史与工程 v4', () => {
     session.commitSurface();
     expect(session.doc.surfaceMaterial.scale).toBe(1);
   });
+  it('工程材质可用于四层，撤销重做和目录、备份往返保持权重与资源', () => {
+    const session = new EditorSession();
+    const weights = session.doc.surface.slice();
+    const original = session.doc.surfaceMaterial.layers[0];
+    const projectImage = (image: typeof original.color) => ({
+      ...image,
+      resource: { origin: 'project' as const, path: resourcePath(image.hash, false) },
+    });
+    const asset = {
+      id: 'surface-test',
+      name: '自定义地面',
+      meters: 23,
+      color: projectImage(original.color),
+      normal: projectImage(original.normal),
+    };
+    session.previewSurfaceLayer(0, asset);
+    expect(session.doc.surfaceMaterial.layers[0].name).not.toBe(asset.name);
+    expect(session.history.canUndo).toBe(false);
+    session.cancelSurfaceLayer();
+    expect(session.surfaceLayerPreview).toBeNull();
+    session.change('导入并使用材质', (doc) => {
+      doc.surfaceMaterial.library = [asset];
+      doc.surfaceMaterial.layers = doc.surfaceMaterial.layers.map((layer) => ({
+        ...layer,
+        ...asset,
+        id: layer.id,
+        materialId: asset.id,
+      }));
+    });
+    expect(session.error).toBe('');
+    expect(session.doc.surface).toEqual(weights);
+    session.undo();
+    expect(session.doc.surfaceMaterial.library).toBeUndefined();
+    session.redo();
+    expect(session.doc.surfaceMaterial.layers.every((layer) => layer.materialId === asset.id)).toBe(
+      true,
+    );
+    const files = encodeProjectFiles(session.doc);
+    expect(files[resourcePath(asset.color.hash, false)]).toBeDefined();
+    const restored = decodeProjectFiles(files, session.doc.name);
+    expect(restored.surfaceMaterial.library?.[0].meters).toBe(23);
+    expect(restored.surface).toEqual(weights);
+    const backup = decodeProject(encodeProject(session.doc));
+    expect(backup.surfaceMaterial.layers.map((layer) => layer.materialId)).toEqual(
+      Array(4).fill(asset.id),
+    );
+    expect(backup.surfaceMaterial.library?.[0].color.bytes).toEqual(asset.color.bytes);
+    expect(backup.surface).toEqual(weights);
+  }, 30000);
   it('四种画刷不改高度，权重归一化，手绘覆盖不依赖自动显岩', () => {
     const doc = createDocument(),
       heights = doc.heights.slice();

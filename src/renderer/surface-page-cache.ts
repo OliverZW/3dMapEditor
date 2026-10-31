@@ -164,6 +164,11 @@ export class SurfacePageCache {
     this.terrain.needsUpdate = true;
     this.bake.uniforms.uCacheTerrain.value = this.terrain;
   }
+  setMaterialDocument(doc: MapDocument) {
+    if (!this.doc) return;
+    this.doc = doc;
+    this.invalidate();
+  }
   invalidate(change?: RenderInvalidation) {
     this.generation++;
     if (!change?.bounds || change.kind === 'all' || change.kind === 'material') this.pages.clear();

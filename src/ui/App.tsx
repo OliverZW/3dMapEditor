@@ -47,6 +47,7 @@ import { VegetationPalette } from './VegetationPalette';
 import { InspectorActions } from './InspectorActions';
 import { BrushPalette } from './BrushPalette';
 import { SurfaceInspector } from './SurfaceInspector';
+import { SurfaceLibrary } from './SurfaceLibrary';
 import { MapOverview, MapOverviewInspector, MapDimensions } from './MapOverview';
 import { Button, Group, Slider, NumberField } from './controls';
 import { FactionInspector } from './FactionInspector';
@@ -196,9 +197,9 @@ export function App({
   const inspectorElement = useRef<HTMLElement>(null);
   const viewportElement = useRef<HTMLDivElement>(null),
     viewport = useRef<EditorViewport | null>(null);
-  const [modal, setModal] = useState<'resources' | 'details' | 'export' | 'new' | 'help' | null>(
-      null,
-    ),
+  const [modal, setModal] = useState<
+      'resources' | 'details' | 'surface' | 'export' | 'new' | 'help' | null
+    >(null),
     [category, setCategory] = useState<AssetKind>('tree'),
     [search, setSearch] = useState(''),
     [resourceId, setResourceId] = useState('tree-pine');
@@ -947,7 +948,9 @@ export function App({
                           />
                         )}
                       </Group>
-                      {session.tool === 'surface' && <SurfaceInspector session={session} />}
+                      {session.tool === 'surface' && (
+                        <SurfaceInspector session={session} onLibrary={() => setModal('surface')} />
+                      )}
                       {(session.tool === 'trees' || session.tool === 'grass') && (
                         <Group title="分布与避让">
                           <Slider
@@ -1303,6 +1306,22 @@ export function App({
               替换高度并移除河流
             </Button>
           </div>
+        </Modal>
+      )}
+      {modal === 'surface' && (
+        <Modal
+          title="地表材质"
+          className="surface-dialog"
+          onClose={() => {
+            if (!session.busy) setModal(null);
+          }}
+        >
+          <SurfaceLibrary
+            session={session}
+            onClose={() => {
+              if (!session.busy) setModal(null);
+            }}
+          />
         </Modal>
       )}
       {modal === 'details' && resource && (

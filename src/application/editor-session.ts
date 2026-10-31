@@ -10,6 +10,7 @@ import type {
   Tool,
   ViewSettings,
   SurfaceMaterialPack,
+  SurfaceAsset,
 } from '../core/types';
 import { DEFAULT_BRUSH, DEFAULT_VIEW } from '../core/types';
 import { createDocument, validateDocument } from '../core/document';
@@ -99,6 +100,7 @@ export class EditorSession {
     values: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>;
   } | null = null;
   surfacePreview: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'> | null = null;
+  surfaceLayerPreview: { index: number; asset: SurfaceAsset } | null = null;
   constructor(initial = createDemo()) {
     this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(initial)));
     this.heights = deriveHeights(this.doc);
@@ -133,6 +135,17 @@ export class EditorSession {
     if (this.surfacePreview) this.invalidateRender('material');
     this.surfaceEdit = null;
     this.surfacePreview = null;
+    this.notify();
+  }
+  previewSurfaceLayer(index: number, asset: SurfaceAsset) {
+    this.surfaceLayerPreview = { index, asset };
+    this.invalidateRender('material');
+    this.notify();
+  }
+  cancelSurfaceLayer() {
+    if (!this.surfaceLayerPreview) return;
+    this.surfaceLayerPreview = null;
+    this.invalidateRender('material');
     this.notify();
   }
   subscribe = (fn: () => void) => {
@@ -303,6 +316,7 @@ export class EditorSession {
     this.cancelStroke();
     this.surfaceEdit = null;
     this.surfacePreview = null;
+    this.surfaceLayerPreview = null;
     this.doc = candidate;
     this.resizePreview = null;
     this.terrainRevision++;

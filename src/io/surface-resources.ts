@@ -15,7 +15,7 @@ export function surfaceImageBytes(image: SurfaceImage): Uint8Array {
 export function prepareSurfaceDocument(doc: MapDocument): MapDocument {
   validateSurfaceMaterial(doc.surfaceMaterial);
   const surfaceMaterial = cloneSurfaceMaterial(doc.surfaceMaterial);
-  for (const layer of surfaceMaterial.layers) {
+  for (const layer of [...surfaceMaterial.layers, ...(surfaceMaterial.library ?? [])]) {
     for (const kind of ['color', 'normal'] as const) {
       const image = layer[kind];
       image.bytes = surfaceImageBytes(image);

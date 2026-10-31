@@ -3,6 +3,9 @@ import { assetUrl } from '../io/builtin-resources';
 import { Mountain, ArrowDownToLine, Waves, Layers3, Check, Info } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import { Button } from './controls';
+import { useEffect, useState } from 'react';
+import type { SurfaceImage } from '../core/types';
+import { surfaceImageBytes } from '../io/surface-resources';
 
 const TERRAIN_MODES = [
   { id: 'raise', label: '抬高', icon: Mountain },
@@ -11,6 +14,26 @@ const TERRAIN_MODES = [
   { id: 'flatten', label: '定高', icon: Layers3 },
 ] as const;
 const SURFACE_NAMES = surfaceResources.layers.map((layer) => layer.name);
+
+function SurfaceSwatch({ image }: { image: SurfaceImage }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const next = URL.createObjectURL(
+      new Blob([surfaceImageBytes(image).slice().buffer], { type: 'image/png' }),
+    );
+    setUrl(next);
+    return () => {
+      window.setTimeout(() => URL.revokeObjectURL(next), 1000);
+    };
+  }, [image.hash]);
+  return (
+    <img
+      className="surface-swatch"
+      src={url || assetUrl(surfaceResources.layers[0].thumbnail.file)}
+      alt=""
+    />
+  );
+}
 
 export function BrushPalette({ session }: { session: EditorSession }) {
   const terrain = session.tool === 'terrain';
@@ -46,12 +69,15 @@ export function BrushPalette({ session }: { session: EditorSession }) {
                   session.notify();
                 }}
               >
-                <img
-                  className="surface-swatch"
-                  src={assetUrl(surfaceResources.layers[index].thumbnail.file)}
-                  alt=""
-                />
-                <span>{name}</span>
+                <SurfaceSwatch image={session.doc.surfaceMaterial.layers[index].color} />
+                <span>
+                  {name}
+                  <small>
+                    {session.doc.surfaceMaterial.layers[index].name !== name
+                      ? ` · ${session.doc.surfaceMaterial.layers[index].name}`
+                      : ''}
+                  </small>
+                </span>
                 {selected && <Check className="palette-check" size={12} aria-hidden="true" />}
               </button>
             );
