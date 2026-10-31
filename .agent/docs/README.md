@@ -15,7 +15,7 @@
 | 主题 | 资料与职责 |
 | --- | --- |
 | 任务判断 | [编辑器与地图制作边界](../rules/editor-map-boundary.md)：区分软件能力、地图内容、共享资源与测试交付。 |
-| 开发约束 | [架构规则](../rules/architecture.md)、[代码规范](../rules/code-style.md)、[整体风格](../rules/visual-style.md)：长期适用的约束。 |
+| 开发约束 | [架构规则](../rules/architecture.md)、[代码规范](../rules/code-style.md)、[整体风格](../rules/visual-style.md)、[Git 提交规则](../rules/git-workflow.md)：长期适用的约束。 |
 | 功能目标 | [需求与验收](requirements.md)：已确认需求、参数与验收场景，待实现目标明确标注。 |
 | 实现设计 | [技术设计](technical-design.md)：模块、数据、算法及资源生命周期。 |
 | 操作设计 | [界面与操作](interaction.md)：布局、流程、输入与反馈。 |
