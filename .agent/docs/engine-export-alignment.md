@@ -1,6 +1,6 @@
 # 引擎导出 v2 · 实现与验收清单
 
-日期：2026-10-25。范围按用户最新确认收敛为“按协议导出地图数据与参考资源”，取代此前导入器／数据 SDK／Effect 还原的实施计划。
+范围：按协议导出地图数据与参考资源；游戏负责读取和呈现。验证日期及条件见实施记录。
 
 关联：[通用协议](engine-export-spec.md) · [字段契约](contracts/engine-export-v2.schema.json) · [Cocos 接入](cocos-export.md) · [实施记录](implementation.md)
 

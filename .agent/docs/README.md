@@ -4,6 +4,7 @@
 
 ## 当前状态
 
+- 本机生产版可通过 `dist/start-editor.bat` 启动；版本更新记录位于 `dist/RELEASE_NOTES.txt`，构建与验证见[实施记录](implementation.md)。
 - 浏览器编辑器支持地形、地表、模型、树草、河流、据点、辖区、势力、撤销和工程保存；运行方法、实际验证及剩余差距见[实施记录](implementation.md)。
 - 当前 `.map3d` 工程为 v3；文件夹工程、`.map3dproj` 和自包含 v4 备份是已确定但尚未实现的目标，见[地图工程规范](map-project-format.md)。
 - 运行导出采用引擎数据协议 v2，游戏负责读取与呈现；真实 Cocos Creator 导入、材质和运行性能尚未验收。详见[导出协议](engine-export-spec.md)与[Cocos 适配](cocos-export.md)。
@@ -11,11 +12,17 @@
 
 ## 按主题查阅
 
-- [编辑器与地图制作边界](../rules/editor-map-boundary.md) · [工程目录与职责](project-directory-guide.md)
-- [需求与验收](requirements.md) · [技术设计](technical-design.md) · [界面与操作](interaction.md)
-- [通用引擎导出协议 v2](engine-export-spec.md)（格式唯一来源） · [JSON Schema](contracts/engine-export-v2.schema.json) · [字段样例](contracts/engine-export-v2.example.json) · [实现对齐与验收](engine-export-alignment.md)
-- [地图工程目录与专属文件规范](map-project-format.md) · [应用实施与验证](implementation.md) · [渲染性能优化](render-optimization.md) · [交付检查](delivery-check.md)
-- [架构规则](../rules/architecture.md) · [代码规范](../rules/code-style.md) · [整体风格](../rules/visual-style.md)
+| 主题 | 资料与职责 |
+| --- | --- |
+| 任务判断 | [编辑器与地图制作边界](../rules/editor-map-boundary.md)：区分软件能力、地图内容、共享资源与测试交付。 |
+| 开发约束 | [架构规则](../rules/architecture.md)、[代码规范](../rules/code-style.md)、[整体风格](../rules/visual-style.md)：长期适用的约束。 |
+| 功能目标 | [需求与验收](requirements.md)：已确认需求、参数与验收场景，待实现目标明确标注。 |
+| 实现设计 | [技术设计](technical-design.md)：模块、数据、算法及资源生命周期。 |
+| 操作设计 | [界面与操作](interaction.md)：布局、流程、输入与反馈。 |
+| 实际状态 | [当前实现与验证](implementation.md)：能力、测试条件、结论与差距；[渲染优化](render-optimization.md)保存独立性能矩阵及候选取舍。 |
+| 目录职责 | [工程目录与职责](project-directory-guide.md)：源码、制作源文件、运行资源与产物的归属。 |
+| 工程文件 | [地图工程规范](map-project-format.md)：待实现的文件夹工程与 v4 备份规范；当前格式见技术设计。 |
+| 引擎数据 | [通用协议 v2](engine-export-spec.md)是格式唯一来源，附[JSON Schema](contracts/engine-export-v2.schema.json)和[字段样例](contracts/engine-export-v2.example.json)；[Cocos 接入](cocos-export.md)说明目标差异，[对齐清单](engine-export-alignment.md)说明实现与验收边界。 |
 
 ## 设计参考
 
