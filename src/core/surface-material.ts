@@ -9,8 +9,18 @@ export function defaultSurfaceMaterial(): SurfaceMaterialPack {
       id: layer.id as SurfaceMaterialPack['layers'][number]['id'],
       name: layer.name,
       meters: layer.meters,
-      color: { hash: layer.color.hash, width: layer.color.width, height: layer.color.height },
-      normal: { hash: layer.normal.hash, width: layer.normal.width, height: layer.normal.height },
+      color: {
+        hash: layer.color.hash,
+        width: layer.color.width,
+        height: layer.color.height,
+        resource: { origin: 'builtin', id: layer.color.file },
+      },
+      normal: {
+        hash: layer.normal.hash,
+        width: layer.normal.width,
+        height: layer.normal.height,
+        resource: { origin: 'builtin', id: layer.normal.file },
+      },
     })),
   };
 }

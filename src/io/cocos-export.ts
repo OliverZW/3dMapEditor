@@ -9,7 +9,6 @@ import { sampleHeight } from '../core/terrain';
 import { vegetationFilter } from '../core/vegetation';
 import { encodeHeightPng } from './heightmap';
 import { imageHash } from './image-validation';
-import { builtinResourceBytes } from './builtin-resources';
 import { centerSiteGlb, meshGlb } from './engine-glb';
 import { EngineFiles } from './engine-export-files';
 import { validateEnginePackage } from './engine-export-validation';
@@ -23,7 +22,6 @@ import type {
   ModelDescription,
   WaterDescription,
 } from './engine-export-types';
-import waterResources from '../../editor-assets/water/manifest.json';
 import contract from '../../.agent/docs/contracts/engine-export-v2.schema.json';
 
 const referenceSources = import.meta.glob(
@@ -303,19 +301,19 @@ async function run(snapshot: ExportSnapshot, input: ExportOptions) {
       kind: 'river-water',
       version: 1,
       normal: {
-        path: files.image(builtinResourceBytes(waterResources.normal.hash)),
+        path: files.image(doc.waterMaterial.normal.bytes!),
         colorSpace: 'linear',
       },
       mask: {
-        path: files.image(builtinResourceBytes(waterResources.mask.hash)),
+        path: files.image(doc.waterMaterial.mask.bytes!),
         colorSpace: 'linear',
       },
       shallowColor: new Color(0x65968b).toArray(),
       deepColor: new Color(0x315565).toArray(),
       skyColor: new Color(0xb2c8cb).toArray(),
-      roughness: waterResources.material.roughness,
-      opacity: waterResources.material.opacity,
-      metalness: waterResources.material.metalness,
+      roughness: doc.waterMaterial.material.roughness,
+      opacity: doc.waterMaterial.material.opacity,
+      metalness: doc.waterMaterial.material.metalness,
       flowSpeed: 0.8,
       phaseSeconds: 12,
     });

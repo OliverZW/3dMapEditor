@@ -16,6 +16,7 @@ import { History, snapshot } from '../src/core/history';
 import { deriveHeights, sampleHeight, applyTerrainBrush } from '../src/core/terrain';
 import { DEFAULT_BRUSH } from '../src/core/types';
 import { generateGrass } from '../src/core/vegetation';
+import { imageHash } from '../src/io/image-validation';
 import { decodeProject, encodeProject } from '../src/io/project';
 import { decodeHeightPng, encodeHeightPng } from '../src/io/heightmap';
 import { ExportRegistry } from '../src/io/export-adapter';
@@ -217,7 +218,7 @@ describe('高度、植被与工程', () => {
     d.assets.push({
       id: 'custom-tree',
       kind: 'tree',
-      hash: 'test',
+      hash: imageHash(sampleGlb()),
       name: '测试资源',
       bytes: sampleGlb(),
       size: [1, 2, 1],

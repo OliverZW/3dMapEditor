@@ -58,24 +58,22 @@ describe('统一内置素材', () => {
     );
     expect(builtinResourceBytes(first.hash)).toBe(original);
   });
-  it('工程包内嵌全部模型，重开保留原始GLB与基础变换', () => {
+  it('备份只携带使用中的内置模型，恢复资源归工程所有', () => {
     const doc = prepareModelDocument(createDocument());
-    doc.assets[0].scale = 1.25;
-    doc.assets[0].yaw = 0.3;
+    const tree = doc.assets.find((asset) => asset.kind === 'tree');
+    tree.scale = 1.25;
+    doc.trees.push({ id: 1, assetId: tree.id, x: 0, z: 0, yaw: 0, scale: 1 });
+    doc.nextId = 2;
     const bytes = encodeProject(doc),
       packed = unzipSync(bytes);
-    const manifest = JSON.parse(strFromU8(packed['manifest.json']));
-    for (const asset of manifest.assets)
-      expect(createHash('sha256').update(packed[asset.path]).digest('hex')).toBe(asset.hash);
+    const map = JSON.parse(strFromU8(packed['map.json']));
+    expect(map.assets).toHaveLength(1);
+    expect(packed[`assets/models/${tree.hash}.glb`]).toEqual(tree.bytes);
     const restored = decodeProject(bytes);
-    const withoutBytes = (value) =>
-      JSON.parse(JSON.stringify(value, (key, item) => (key === 'bytes' ? undefined : item)));
-    expect(withoutBytes(restored.surfaceMaterial)).toEqual(withoutBytes(doc.surfaceMaterial));
-    expect(restored.assets.map(({ bytes, path, ...asset }) => asset)).toEqual(
-      doc.assets.map(({ bytes, ...asset }) => asset),
-    );
-    for (const asset of restored.assets)
-      expect(createHash('sha256').update(asset.bytes).digest('hex')).toBe(asset.hash);
+    expect(restored.assets).toHaveLength(1);
+    expect(restored.assets[0].scale).toBe(1.25);
+    expect(restored.assets[0].resource.origin).toBe('project');
+    expect(createHash('sha256').update(restored.assets[0].bytes).digest('hex')).toBe(tree.hash);
     const old = createDocument();
     old.assets[0].hash = 'builtin-city-v1';
     expect(() => prepareModelDocument(old)).toThrow('缺少 GLB');

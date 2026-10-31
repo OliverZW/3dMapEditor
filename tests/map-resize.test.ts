@@ -278,44 +278,13 @@ describe('结构历史与版本迁移', () => {
     expect(() => history.commit(doc, after, '尺寸')).toThrow('内存预算');
     expect(history.canUndo).toBe(false);
   });
-  it('损坏的 v1 不通过补齐网格掩盖数组错误，字符串版本不作为兼容版本', () => {
+  it('新版备份拒绝损坏的数组和非数值版本', () => {
     const files = unzipSync(encodeProject(createDocument()));
-    const manifest = JSON.parse(strFromU8(files['manifest.json']));
-    manifest.formatVersion = 1;
-    files['manifest.json'] = strToU8(JSON.stringify(manifest));
     files['logic/owners.u32'] = new Uint8Array(4);
     expect(() => decodeProject(zipSync(files))).toThrow('长度');
-    manifest.formatVersion = '1';
+    const manifest = JSON.parse(strFromU8(files['manifest.json']));
+    manifest.formatVersion = '4';
     files['manifest.json'] = strToU8(JSON.stringify(manifest));
     expect(() => decodeProject(zipSync(files))).toThrow('版本');
-  });
-  it('v1 局部网格迁移到 v3 全覆盖，保持据点世界位置和归属', () => {
-    const doc = createDocument();
-    doc.grid = {
-      columns: 64,
-      rows: 48,
-      radius: 12,
-      originX: -Math.sqrt(3) * 12 * 31.75,
-      originZ: -18 * 23.5,
-    };
-    doc.owners = new Uint32Array(64 * 48);
-    const city = site(doc, 0, 0),
-      position = hexWorld(doc.grid, city.center);
-    const files = unzipSync(encodeProject(doc)),
-      manifest = JSON.parse(strFromU8(files['manifest.json']));
-    manifest.formatVersion = 1;
-    files['manifest.json'] = strToU8(JSON.stringify(manifest));
-    let migrated = false;
-    const result = decodeProject(zipSync(files), () => {
-      migrated = true;
-    });
-    expect(migrated).toBe(true);
-    expect(result.formatVersion).toBe(3);
-    const p = hexWorld(result.grid, result.sites[0].center);
-    expect(p.x).toBeCloseTo(position.x, 8);
-    expect(p.z).toBeCloseTo(position.z, 8);
-    expect(result.owners[hexIndex(result.grid, result.sites[0].center)]).toBe(city.id);
-    expect(cellOnMap(result, worldHex(result.grid, { x: 1024, z: 1024 }))).toBe(true);
-    expect(decodeProject(encodeProject(result)).formatVersion).toBe(3);
   });
 });

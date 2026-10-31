@@ -1,4 +1,5 @@
-import { prepareModelDocument } from '../io/builtin-resources';
+import { availableBuiltinModels, prepareModelDocument } from '../io/builtin-resources';
+import { prepareWaterDocument } from '../io/project-resources';
 import type { RenderBounds, RenderInvalidation } from './render-invalidation';
 import type {
   BrushSettings,
@@ -99,7 +100,7 @@ export class EditorSession {
   } | null = null;
   surfacePreview: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'> | null = null;
   constructor() {
-    this.doc = prepareModelDocument(prepareSurfaceDocument(this.doc));
+    this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(this.doc)));
   }
   previewSurface(values: Partial<Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>>) {
     if (!this.surfaceEdit) {
@@ -288,8 +289,15 @@ export class EditorSession {
       this.message(e instanceof Error ? e.message : '操作失败', true);
     }
   }
-  replace(doc: MapDocument) {
-    const candidate = prepareModelDocument(prepareSurfaceDocument(doc));
+  replace(doc: MapDocument, includeBuiltinCatalog = false) {
+    const candidate = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(doc)));
+    if (includeBuiltinCatalog) {
+      const ids = new Set(candidate.assets.map((asset) => asset.id));
+      candidate.assets = [
+        ...candidate.assets,
+        ...availableBuiltinModels().filter((asset) => !ids.has(asset.id)),
+      ];
+    }
     validateDocument(candidate);
     this.cancelStroke();
     this.surfaceEdit = null;

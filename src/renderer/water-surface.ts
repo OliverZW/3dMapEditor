@@ -9,14 +9,23 @@ import { createRiverFlowSampler } from '../core/river-flow';
 export class WaterSurface {
   readonly group = new THREE.Group();
   private waterMaterial: WaterMaterial;
+  private materialKey = '';
 
-  constructor(onError: (message: string) => void) {
+  constructor(private onError: (message: string) => void) {
     this.group.name = 'RiverWaterSurfaces';
     this.waterMaterial = new WaterMaterial(onError);
   }
 
   rebuild(doc: MapDocument, heights: Float32Array) {
     this.clear();
+    const key = JSON.stringify(doc.waterMaterial, (key, value) =>
+      key === 'bytes' ? undefined : value,
+    );
+    if (key !== this.materialKey) {
+      this.waterMaterial.dispose();
+      this.waterMaterial = new WaterMaterial(this.onError, doc.waterMaterial);
+      this.materialKey = key;
+    }
     const widths = new Map(doc.rivers.map((river) => [river.id, river.width]));
     const sampleFlow = createRiverFlowSampler(doc.rivers);
     const flowCache = new Map<string, [number, number]>();

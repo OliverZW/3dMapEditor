@@ -9,7 +9,7 @@ import { encodeProject, decodeProject } from '../src/io/project';
 import { imageHash, validateSurfacePng } from '../src/io/image-validation';
 import { prepareSurfaceDocument } from '../src/io/surface-resources';
 
-describe('四层地表材质、历史与工程 v3', () => {
+describe('四层地表材质、历史与工程 v4', () => {
   it('图片 SHA-256 与标准向量一致', () => {
     expect(imageHash(new TextEncoder().encode('abc'))).toBe(
       'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
@@ -89,14 +89,14 @@ describe('四层地表材质、历史与工程 v3', () => {
       );
     expect(doc.heights).toEqual(heights);
   });
-  it('v3 包内包含八张图片，往返保留字节和参数，缺失或损坏资源拒绝', () => {
+  it('v4 包内包含地表和水面图片，往返保留字节和参数，缺失或损坏资源拒绝', () => {
     const doc = createDocument();
     doc.surfaceMaterial.scale = 2;
     doc.surfaceMaterial.detail = 0.5;
     doc.surfaceMaterial.slopeRock = false;
     const files = unzipSync(encodeProject(doc));
-    const images = Object.keys(files).filter((name) => name.startsWith('textures/surface/'));
-    expect(images).toHaveLength(8);
+    const images = Object.keys(files).filter((name) => name.startsWith('assets/textures/'));
+    expect(images).toHaveLength(10);
     const candidate = decodeProject(zipSync(files, { level: 0 }));
     expect(candidate.formatVersion).toBe(3);
     expect(candidate.surfaceMaterial.scale).toBe(2);
@@ -113,23 +113,12 @@ describe('四层地表材质、历史与工程 v3', () => {
     files[name][50] ^= 1;
     expect(() => decodeProject(zipSync(files, { level: 0 }))).toThrow('哈希');
   }, 20000);
-  it.each([1, 2])('v%i 加载补齐默认材质且只触发一次迁移通知', (version) => {
-    const doc = createDocument(),
-      files = unzipSync(encodeProject(doc));
+  it.each([1, 2, 3])('拒绝旧版 v%i，不迁移或补齐数据', (version) => {
+    const files = unzipSync(encodeProject(createDocument()));
     const manifest = JSON.parse(strFromU8(files['manifest.json']));
     manifest.formatVersion = version;
-    delete manifest.surfaceMaterial;
-    for (const name of Object.keys(files)) if (name.startsWith('textures/')) delete files[name];
     files['manifest.json'] = strToU8(JSON.stringify(manifest));
-    let count = 0;
-    const result = decodeProject(zipSync(files), () => count++);
-    expect(result.formatVersion).toBe(3);
-    expect(count).toBe(1);
-    expect(result.heights).toEqual(doc.heights);
-    expect(result.surface).toEqual(doc.surface);
-    expect(
-      result.surfaceMaterial.layers.every((layer) => layer.color.bytes && layer.normal.bytes),
-    ).toBe(true);
+    expect(() => decodeProject(zipSync(files))).toThrow('不兼容旧版');
   });
   it('损坏候选工程不会切换当前地图，错误图片尺寸及路径受校验', () => {
     const session = new EditorSession(),

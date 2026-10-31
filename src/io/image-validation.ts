@@ -74,9 +74,23 @@ export function imageHash(bytes: Uint8Array): string {
 }
 
 const checked = new WeakMap<Uint8Array, { hash: string; width: number; height: number }>();
-export function validateSurfacePng(bytes: Uint8Array, hash: string, width: number, height: number) {
+export function validateSurfacePng(
+  bytes: Uint8Array,
+  hash: string,
+  width: number,
+  height: number,
+  allowGrayscale = false,
+) {
+  if (![width, height].every((value) => Number.isInteger(value) && value >= 2 && value <= 4096))
+    throw new Error('PNG 尺寸无效或超限');
   const previous = checked.get(bytes);
-  if (previous?.hash === hash && previous.width === width && previous.height === height) return;
+  if (
+    previous?.hash === hash &&
+    previous.width === width &&
+    previous.height === height &&
+    (allowGrayscale || [2, 6].includes(bytes[25]))
+  )
+    return;
   if (
     bytes.length < 45 ||
     bytes.length > 16 * 1024 * 1024 ||
@@ -107,13 +121,13 @@ export function validateSurfacePng(bytes: Uint8Array, hash: string, width: numbe
         view.getUint32(offset + 8) !== width ||
         view.getUint32(offset + 12) !== height ||
         data[8] !== 8 ||
-        ![2, 6].includes(data[9]) ||
+        !(allowGrayscale ? [0, 2, 4, 6] : [2, 6]).includes(data[9]) ||
         data[10] ||
         data[11] ||
         data[12]
       )
         throw new Error('地表 PNG 须为尺寸匹配、非交错的 RGB/RGBA8 图片');
-      channels = data[9] === 2 ? 3 : 4;
+      channels = ({ 0: 1, 2: 3, 4: 2, 6: 4 } as Record<number, number>)[data[9]];
       header = true;
     } else if (type === 'IDAT') parts.push(data);
     else if (type === 'IEND') {

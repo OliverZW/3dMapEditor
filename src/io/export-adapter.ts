@@ -1,4 +1,5 @@
 import { prepareModelDocument } from './builtin-resources';
+import { prepareWaterDocument } from './project-resources';
 import type { MapDocument } from '../core/types';
 import { snapshot } from '../core/history';
 import { deriveHeights } from '../core/terrain';
@@ -31,7 +32,9 @@ export interface ExportAdapter {
 }
 export function captureSnapshot(doc: MapDocument): ExportSnapshot {
   validateDocument(doc);
-  const document = prepareSurfaceDocument(prepareModelDocument(snapshot(doc)));
+  const document = prepareWaterDocument(
+    prepareSurfaceDocument(prepareModelDocument(snapshot(doc))),
+  );
   return {
     document,
     finalHeights: deriveHeights(document),

@@ -47,7 +47,7 @@ fs.mkdirSync(artifacts, { recursive: true });
     await page.getByRole('heading', { name: '工具属性', exact: true }).waitFor();
     const initial = await save();
     const fixtureFiles = initial.files;
-    const fixtureManifest = JSON.parse(strFromU8(fixtureFiles['manifest.json']));
+    const fixtureManifest = JSON.parse(strFromU8(fixtureFiles['map.json']));
     const fixtureObjects = { trees: [], grass: [], sites: [], factions: [], rivers: [] };
     {
       const make = (id, name, points, waterLevel) => ({
@@ -90,7 +90,7 @@ fs.mkdirSync(artifacts, { recursive: true });
       ];
     }
     fixtureManifest.nextId = 4;
-    fixtureFiles['manifest.json'] = strToU8(JSON.stringify(fixtureManifest));
+    fixtureFiles['map.json'] = strToU8(JSON.stringify(fixtureManifest));
     fixtureFiles['objects.json'] = strToU8(JSON.stringify(fixtureObjects));
     fixtureFiles['logic/owners.u32'] = new Uint8Array(fixtureFiles['logic/owners.u32'].length);
     const flatHeight = Buffer.alloc(fixtureFiles['terrain/base.f32'].length);

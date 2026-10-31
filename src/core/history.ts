@@ -19,6 +19,7 @@ type Metadata = Pick<
   | 'settings'
   | 'grid'
   | 'surfaceMaterial'
+  | 'waterMaterial'
 >;
 interface PatchEntry {
   kind: 'patch';
@@ -53,6 +54,12 @@ function metadata(doc: MapDocument): Metadata {
     settings: { ...doc.settings },
     grid: { ...doc.grid },
     surfaceMaterial: cloneSurfaceMaterial(doc.surfaceMaterial),
+    waterMaterial: {
+      ...doc.waterMaterial,
+      material: { ...doc.waterMaterial.material },
+      normal: { ...doc.waterMaterial.normal },
+      mask: { ...doc.waterMaterial.mask },
+    },
     name: doc.name,
     nextId: doc.nextId,
     assets: doc.assets.map((a) => ({ ...a })),

@@ -6,6 +6,8 @@ import { builtinResourceBytes } from './builtin-resources';
 
 export function surfaceImageBytes(image: SurfaceImage): Uint8Array {
   if (image.bytes) return image.bytes;
+  if (image.resource?.origin === 'project')
+    throw new Error(`工程贴图缺少数据：${image.resource.path}`);
   return builtinResourceBytes(image.hash);
 }
 

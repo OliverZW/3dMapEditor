@@ -45,10 +45,10 @@ const edge = path.join(
     const projectFile = path.join(artifacts, 'import-roundtrip.map3d');
     await saved.saveAs(projectFile);
     const packed = unzipSync(fs.readFileSync(projectFile)),
-      manifest = JSON.parse(strFromU8(packed['manifest.json']));
+      manifest = JSON.parse(strFromU8(packed['map.json']));
     const custom = manifest.assets.find((a) => a.name === 'custom-pine');
     assert(custom);
-    assert.deepEqual(Buffer.from(packed[custom.path]), Buffer.from(files[model]));
+    assert.deepEqual(Buffer.from(packed[custom.resource.path]), Buffer.from(files[model]));
     const open = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: '打开', exact: true }).click();
     await (await open).setFiles(projectFile);

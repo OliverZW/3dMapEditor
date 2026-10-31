@@ -1,4 +1,7 @@
 export type AssetKind = 'city' | 'fortress' | 'tree' | 'grass';
+export type ResourceReference =
+  | { origin: 'builtin'; id: string }
+  | { origin: 'project'; path: string };
 export interface Point {
   x: number;
   z: number;
@@ -22,6 +25,7 @@ export interface HexGrid {
   originZ: number;
 }
 export interface ModelAsset {
+  resource?: ResourceReference;
   id: string;
   name: string;
   kind: AssetKind;
@@ -80,6 +84,7 @@ export interface Faction {
   color: string;
 }
 export interface MapDocument {
+  waterMaterial: WaterMaterialPack;
   formatVersion: 3;
   generatorVersion: 1;
   name: string;
@@ -99,11 +104,18 @@ export interface MapDocument {
 }
 export type SurfaceLayerId = 'grass' | 'soil' | 'rock' | 'sand';
 export interface SurfaceImage {
+  resource?: ResourceReference;
   hash: string;
   width: number;
   height: number;
   /** PNG 字节为不可变共享资源；内置描述在 IO 装配时补齐。 */
   bytes?: Uint8Array;
+}
+export interface WaterMaterialPack {
+  version: 1;
+  normal: SurfaceImage;
+  mask: SurfaceImage;
+  material: { color: number; roughness: number; metalness: number; opacity: number };
 }
 export interface SurfaceMaterialPack {
   id: string;

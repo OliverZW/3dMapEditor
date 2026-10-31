@@ -9,7 +9,7 @@
 
 `packageKind=map3d-engine-export`，整数 `exportVersion=2`。source 记录工程格式／生成器版本，algorithms 分别记录 terrainSampling、grassGenerator、waterGeometry、waterFlow，当前均为 1。adapter 记录目标及适配器版本；当前只注册 `cocos-creator-3.8`。通用字段不包含 Cocos UUID、Prefab 路径或引擎类；Unity、Godot 不提供占位导出。
 
-工程 `.map3d` 与导出包分开：前者保存可继续编辑的数据和历史所需语义，当前仍为 v3；后者是已提交快照，不是工程备份，不包含编辑历史。旧 `cocos-map-export/exportVersion=1` 应从原工程重新导出，不猜测迁移。编辑器工程 v1～v3 的兼容不变。
+工程 `.map3d` 与导出包分开：前者保存可继续编辑的数据和历史所需语义，备份格式为 v4、内部数据为 3；后者是已提交快照，不是工程备份，不包含编辑历史。旧 `cocos-map-export/exportVersion=1` 应从原工程重新导出，不猜测迁移。编辑器不再兼容旧版 v1～v3 工程包；引擎导出协议版本不随工程备份版本改变。
 
 不自动创建游戏场景或地图 Prefab，不管理游戏资源覆盖、重新导入或双向同步。内置原始模型与编辑器显示不因导出而改变。
 

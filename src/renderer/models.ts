@@ -197,6 +197,7 @@ export async function importGlb(file: File, kind: AssetKind): Promise<ModelAsset
       name: file.name.replace(/\.glb$/i, ''),
       kind,
       hash,
+      resource: { origin: 'project', path: `assets/models/${hash}.glb` },
       bytes,
       size: [size.x, size.y, size.z],
       triangles: Math.round(triangles),

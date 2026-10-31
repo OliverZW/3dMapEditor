@@ -1,11 +1,12 @@
-import waterResources from '../../editor-assets/water/manifest.json';
-import { builtinResourceBytes } from '../io/builtin-resources';
+import { defaultWaterMaterial } from '../core/water-material';
+import type { WaterMaterialPack } from '../core/types';
+import { surfaceImageBytes } from '../io/surface-resources';
 import * as THREE from 'three';
 
-/** 一次视口持有两张纹理，所有河流共用；异步加载不捕获某张地图。 */
+/** 同一文档的河流共用纹理；切换资源时由 WaterSurface 释放旧实例。 */
 export class WaterMaterial {
   readonly material = new THREE.MeshStandardMaterial({
-    ...waterResources.material,
+    ...defaultWaterMaterial().material,
     transparent: true,
     // 同水位几何已去重；写深度以遮住后绘制的水下辖区叠层。
     depthWrite: true,
@@ -17,7 +18,11 @@ export class WaterMaterial {
   private mask = { value: null as THREE.Texture | null };
   private disposed = false;
 
-  constructor(onError: (message: string) => void) {
+  constructor(
+    onError: (message: string) => void,
+    private resources: WaterMaterialPack = defaultWaterMaterial(),
+  ) {
+    this.material.setValues(resources.material);
     this.material.name = 'RiverWater';
     this.material.customProgramCacheKey = () => 'river-water-v3';
     this.material.onBeforeCompile = (shader) => {
@@ -189,8 +194,8 @@ export class WaterMaterial {
 
   private async load() {
     const results = await Promise.allSettled(
-      [waterResources.normal, waterResources.mask].map(async (image) => {
-        const bytes = builtinResourceBytes(image.hash);
+      [this.resources.normal, this.resources.mask].map(async (image) => {
+        const bytes = surfaceImageBytes(image);
         const bitmap = await createImageBitmap(
           new Blob([bytes.slice().buffer], { type: 'image/png' }),
           {

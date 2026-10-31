@@ -107,7 +107,7 @@ async function main() {
       const { encodeProject, decodeProject } = await import('/src/io/project.ts');
       const { saveDraft, loadDraft } = await import('/src/platform/files.ts');
       const { unzipSync } = await import('/node_modules/fflate/esm/browser.js');
-      const expected = encodeProject(s.doc);
+      const expected = encodeProject(decodeProject(encodeProject(s.doc)));
       const doc = decodeProject(expected);
       s.replace(doc);
       await saveDraft(expected);
@@ -148,7 +148,7 @@ async function main() {
     assert.deepEqual(restored.differences, []);
     assert(restored.sameFiles);
     assert.equal(restored.version, 3);
-    record('v3 工程保存重开与 IndexedDB 草稿恢复数据和资源一致，未新增地图字段');
+    record('v4 备份重开与 IndexedDB 草稿恢复保持地图数据和资源');
 
     const memory = await page.evaluate(async () => {
       const { session: s, viewport } = window.waterFixture;

@@ -4,8 +4,9 @@ import { hexIndex, hexWorld, cellOnMap, indexHex } from './hex';
 import { coveringGrid } from './grid-coverage';
 import { containsPoint } from './map-bounds';
 import modelManifest from '../../editor-assets/models/manifest.json';
+import { defaultWaterMaterial, validateWaterMaterial } from './water-material';
 export const BUILTIN_ASSETS: ModelAsset[] = modelManifest.assets.map(
-  ({ file: _file, lod: _lod, ...asset }) => asset,
+  ({ file, lod: _lod, ...asset }) => ({ ...asset, resource: { origin: 'builtin', id: file } }),
 ) as ModelAsset[];
 export function createDocument(samples = 513, width = 2048, depth = 2048): MapDocument {
   const grid = coveringGrid({ width, depth });
@@ -13,6 +14,7 @@ export function createDocument(samples = 513, width = 2048, depth = 2048): MapDo
   const surface = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) surface[i * 4] = 255;
   return {
+    waterMaterial: defaultWaterMaterial(),
     formatVersion: 3,
     generatorVersion: 1,
     name: '未命名山河',
@@ -35,6 +37,7 @@ export function validateDocument(doc: MapDocument): void {
   if (doc.formatVersion !== 3 || doc.generatorVersion !== 1)
     throw new Error('不支持的工程或生成器版本');
   validateSurfaceMaterial(doc.surfaceMaterial);
+  validateWaterMaterial(doc.waterMaterial);
   const s = doc.settings;
   if (
     ![513, 1025].includes(s.samples) ||

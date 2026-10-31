@@ -35,7 +35,7 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
     return {
       bytes,
       files,
-      manifest: JSON.parse(strFromU8(files['manifest.json'])),
+      manifest: JSON.parse(strFromU8(files['map.json'])),
       objects: JSON.parse(strFromU8(files['objects.json'])),
     };
   }
@@ -225,7 +225,7 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
     await (await reopen).setFiles(croppedFile);
     assert.equal(await page.getByLabel('地面宽度（米）', { exact: true }).inputValue(), '512');
     await page.screenshot({ path: path.join(artifacts, 'resize-river-segments.png') });
-    record('确认缩小后裁除越界对象、保留两个内部河段，v3 工程保存重开一致');
+    record('确认缩小后裁除越界对象、保留两个内部河段，v4 备份保存重开一致');
     await page.getByRole('button', { name: 'Cocos 导出', exact: true }).click();
     const exportWait = page.waitForEvent('download', { timeout: 60000 });
     await page.getByRole('button', { name: '生成并下载', exact: true }).click();
@@ -284,11 +284,11 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
     const legacyOpen = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: '打开', exact: true }).click();
     await (await legacyOpen).setFiles(legacyFile);
-    await page.locator('.status-message').filter({ hasText: '旧工程已升级为 v3' }).waitFor();
-    const migrated = await save();
-    assert.equal(migrated.manifest.formatVersion, 3);
-    assert.deepEqual(migrated.objects.trees, initial.objects.trees);
-    record('v1 工程在实际界面升级并提示重新保存，原有对象保留');
+    await page.waitForFunction(() => document.body.textContent.includes('不兼容旧版'));
+    const retained = await save();
+    assert.deepEqual(retained.manifest.settings, after.manifest.settings);
+    assert.deepEqual(retained.objects, after.objects);
+    record('旧版工程明确拒绝，保留当前地图尺寸与对象');
     assert.deepEqual(errors, []);
     fs.writeFileSync(
       path.join(artifacts, 'map-resize-report.json'),

@@ -259,17 +259,8 @@ export function App() {
     try {
       const file = await selectFile('.map3d');
       if (!file) return;
-      let migrated = false;
-      const candidate = decodeProject(new Uint8Array(await file.arrayBuffer()), () => {
-        migrated = true;
-      });
-      session.replace(candidate);
-      if (migrated) {
-        session.dirty = true;
-        session.message(
-          '旧工程已升级为 v3 并补齐地表材质，内容位置、权重与归属已保留，请重新保存。',
-        );
-      }
+      const candidate = decodeProject(new Uint8Array(await file.arrayBuffer()));
+      session.replace(candidate, true);
       viewport.current?.frameMap();
     } catch (e) {
       report(e);
@@ -1031,7 +1022,7 @@ export function App() {
           <Button
             onClick={() => {
               try {
-                session.replace(decodeProject(draft.bytes));
+                session.replace(decodeProject(draft.bytes), true);
                 session.dirty = true;
                 setDraft(undefined);
               } catch (e) {

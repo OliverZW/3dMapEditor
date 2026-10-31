@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 
+const materialData = (value) =>
+  JSON.parse(JSON.stringify(value, (key, item) => (key === 'resource' ? undefined : item)));
 const artifacts = path.resolve(__dirname, '../test-results');
 async function main() {
   fs.mkdirSync(artifacts, { recursive: true });
@@ -33,7 +35,13 @@ async function main() {
     const download = await pending;
     await download.saveAs(path.join(artifacts, name));
     const files = unzipSync(fs.readFileSync(path.join(artifacts, name)));
-    return { files, manifest: JSON.parse(strFromU8(files['manifest.json'])) };
+    return {
+      files,
+      manifest: {
+        ...JSON.parse(strFromU8(files['manifest.json'])),
+        ...JSON.parse(strFromU8(files['map.json'])),
+      },
+    };
   }
   async function open(name) {
     const pending = page.waitForEvent('filechooser');
@@ -53,12 +61,12 @@ async function main() {
     for (const image of await left.locator('.surface-swatch').all())
       assert(await image.evaluate((node) => node.complete && node.naturalWidth === 128));
     const initial = await save();
-    assert.equal(initial.manifest.formatVersion, 3);
+    assert.equal(JSON.parse(strFromU8(initial.files['manifest.json'])).formatVersion, 4);
     assert.equal(
-      Object.keys(initial.files).filter((name) => name.startsWith('textures/surface/')).length,
-      8,
+      Object.keys(initial.files).filter((name) => name.startsWith('assets/textures/')).length,
+      10,
     );
-    record('四类真实缩略图、v3 包内八张 PNG 与默认参数通过');
+    record('四类真实缩略图、v4 包内十张地表/水面 PNG 与默认参数通过');
 
     const scale = right.getByRole('slider', { name: '纹理尺度', exact: true });
     const scaleBox = await scale.boundingBox();
@@ -122,7 +130,10 @@ async function main() {
     const painted = await save('surface-ui.map3d');
     await open('surface-ui.map3d');
     const reopened = await save();
-    assert.deepEqual(reopened.manifest.surfaceMaterial, painted.manifest.surfaceMaterial);
+    assert.deepEqual(
+      materialData(reopened.manifest.surfaceMaterial),
+      materialData(painted.manifest.surfaceMaterial),
+    );
     assert.deepEqual(reopened.files['terrain/surface.rgba'], painted.files['terrain/surface.rgba']);
     record('四类实际视口涂刷不改高度；保存与重新打开保留材质、参数和权重');
 
@@ -154,7 +165,10 @@ async function main() {
     await page.reload();
     await page.getByRole('button', { name: '恢复', exact: true }).click();
     const recovered = await save();
-    assert.deepEqual(recovered.manifest.surfaceMaterial, painted.manifest.surfaceMaterial);
+    assert.deepEqual(
+      materialData(recovered.manifest.surfaceMaterial),
+      materialData(painted.manifest.surfaceMaterial),
+    );
     assert.deepEqual(
       recovered.files['terrain/surface.rgba'],
       painted.files['terrain/surface.rgba'],
@@ -166,23 +180,28 @@ async function main() {
     delete manifest.surfaceMaterial;
     legacy['manifest.json'] = strToU8(JSON.stringify(manifest));
     for (const name of Object.keys(legacy))
-      if (name.startsWith('textures/surface/')) delete legacy[name];
+      if (name.startsWith('assets/textures/')) delete legacy[name];
     fs.writeFileSync(path.join(artifacts, 'surface-v2.map3d'), zipSync(legacy, { level: 0 }));
     await open('surface-v2.map3d');
-    const migrated = await save();
-    assert.equal(migrated.manifest.formatVersion, 3);
-    assert.equal(migrated.manifest.surfaceMaterial.scale, 1);
-    assert.deepEqual(migrated.files['terrain/surface.rgba'], painted.files['terrain/surface.rgba']);
+    const rejected = await save();
+    assert.deepEqual(
+      materialData(rejected.manifest.surfaceMaterial),
+      materialData(painted.manifest.surfaceMaterial),
+    );
+    assert.deepEqual(rejected.files['terrain/surface.rgba'], painted.files['terrain/surface.rgba']);
     const damaged = { ...painted.files };
-    const image = Object.keys(damaged).find((name) => name.startsWith('textures/surface/'));
+    const image = Object.keys(damaged).find((name) => name.startsWith('assets/textures/'));
     damaged[image] = damaged[image].slice();
     damaged[image][50] ^= 1;
     fs.writeFileSync(path.join(artifacts, 'surface-damaged.map3d'), zipSync(damaged, { level: 0 }));
     await open('surface-damaged.map3d');
     assert((await page.locator('body').innerText()).includes('哈希'));
     const retained = await save();
-    assert.deepEqual(retained.manifest.surfaceMaterial, migrated.manifest.surfaceMaterial);
-    record('v2 工程自动补材质；损坏贴图拒绝载入并保留当前工程');
+    assert.deepEqual(
+      materialData(retained.manifest.surfaceMaterial),
+      materialData(rejected.manifest.surfaceMaterial),
+    );
+    record('旧版工程与损坏贴图拒绝载入，保留当前工程');
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await fixture(page);

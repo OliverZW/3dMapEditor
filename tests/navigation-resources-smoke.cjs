@@ -37,7 +37,7 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
       bytes,
       files,
       objects: JSON.parse(strFromU8(files['objects.json'])),
-      manifest: JSON.parse(strFromU8(files['manifest.json'])),
+      manifest: JSON.parse(strFromU8(files['map.json'])),
     };
   }
   try {
@@ -148,7 +148,7 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
     let after = await save();
     const custom = after.manifest.assets.find((asset) => asset.name === 'custom-pine');
     assert(custom && custom.kind === 'tree');
-    assert.deepEqual(Buffer.from(after.files[custom.path]), fs.readFileSync(fixture));
+    assert.deepEqual(Buffer.from(after.files[custom.resource.path]), fs.readFileSync(fixture));
     record('在树木工具内导入 GLB，自动选中并保存原始资源，不打开资源库');
     const axes = [
       ['右视图 +X', '+x'],

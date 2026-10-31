@@ -1,7 +1,7 @@
 import models from '../../editor-assets/models/manifest.json';
 import surface from '../../editor-assets/surface/manifest.json';
 import water from '../../editor-assets/water/manifest.json';
-import type { MapDocument } from '../core/types';
+import type { MapDocument, ModelAsset } from '../core/types';
 import { defaultSurfaceMaterial, validateSurfaceMaterial } from '../core/surface-material';
 import { imageHash, validateSurfacePng } from './image-validation';
 import { validateStaticGlb } from './glb-validation';
@@ -98,11 +98,26 @@ export function builtinResourceBytes(hash: string): Uint8Array {
   return bytes;
 }
 
+/** 浏览列表不是地图依赖；只补充当前已安装的可选内置模型，不替换工程已有条目。 */
+export function availableBuiltinModels(): ModelAsset[] {
+  return models.assets
+    .filter((asset) => resources.has(asset.hash))
+    .map(({ file, lod: _lod, ...asset }) => ({
+      ...asset,
+      kind: asset.kind as ModelAsset['kind'],
+      bytes: resources.get(asset.hash),
+      size: asset.size as [number, number, number],
+      resource: { origin: 'builtin', id: file },
+    }));
+}
+
 export function prepareModelDocument(doc: MapDocument): MapDocument {
   return {
     ...doc,
     assets: doc.assets.map((asset) => {
       if (asset.bytes) return { ...asset };
+      if (asset.resource?.origin === 'project')
+        throw new Error(`模型 ${asset.name} 缺少工程自有 GLB 数据`);
       const preset = models.assets.find((item) => item.id === asset.id && item.hash === asset.hash);
       if (!asset.builtin || !preset) throw new Error(`模型 ${asset.name} 缺少 GLB 数据`);
       return { ...asset, bytes: builtinResourceBytes(preset.hash) };
