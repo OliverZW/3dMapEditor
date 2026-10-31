@@ -33,8 +33,8 @@ import { hexWorld } from '../core/hex';
 import { hashRandom, vegetationFilter } from '../core/vegetation';
 type FactionMode = 'inspect' | 'list' | 'assign';
 export class EditorSession {
-  doc: MapDocument = createDemo();
-  heights = deriveHeights(this.doc);
+  doc: MapDocument;
+  heights: Float32Array;
   history = new History();
   tool: Tool = 'sites';
   showInputHints = true;
@@ -99,8 +99,9 @@ export class EditorSession {
     values: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>;
   } | null = null;
   surfacePreview: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'> | null = null;
-  constructor() {
-    this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(this.doc)));
+  constructor(initial = createDemo()) {
+    this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(initial)));
+    this.heights = deriveHeights(this.doc);
   }
   previewSurface(values: Partial<Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>>) {
     if (!this.surfaceEdit) {

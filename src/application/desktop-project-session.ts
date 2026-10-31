@@ -1,4 +1,6 @@
 import type { EditorSession } from './editor-session';
+import { createDocument } from '../core/document';
+import { createDemo } from '../core/demo';
 import { snapshot } from '../core/history';
 import { ProjectRepository } from '../io/project-storage';
 import type { ProjectEntry } from '../io/project-storage';
@@ -23,10 +25,10 @@ export class DesktopProjectSession {
     this.current = null;
     if (previous) await this.bridge.releaseProject(previous.handle.token);
   }
-  async open(): Promise<boolean> {
+  async open(handle?: DesktopProjectHandle | null): Promise<boolean> {
     const version = this.session.documentVersion,
       revision = this.session.revision;
-    const handle = await this.bridge.selectProject('open');
+    handle = handle === undefined ? await this.bridge.selectProject('open') : handle;
     if (!handle) return false;
     try {
       const repository = this.repository(handle),
@@ -36,8 +38,59 @@ export class DesktopProjectSession {
       this.session.replace(result.document, true);
       const previous = this.current;
       this.current = { handle, repository, entry: result.entry };
-      if (previous) await this.bridge.releaseProject(previous.handle.token);
-      this.session.message(`已打开工程：${handle.directory}`);
+      if (previous) {
+        try {
+          await this.bridge.releaseProject(previous.handle.token);
+        } catch (error) {
+          console.warn('旧工程授权释放失败', error);
+        }
+      }
+      try {
+        await this.bridge.rememberProject(handle.token);
+        this.session.message(`已打开工程：${handle.directory}`);
+      } catch (error) {
+        this.session.message(`工程已打开，近期记录更新失败：${String(error)}`, true);
+      }
+      return true;
+    } catch (error) {
+      await this.bridge.releaseProject(handle.token);
+      throw error;
+    }
+  }
+  async create(
+    parent: DesktopProjectHandle,
+    name: string,
+    samples: number,
+    width: number,
+    depth: number,
+    example: boolean,
+  ): Promise<boolean> {
+    const version = this.session.documentVersion,
+      revision = this.session.revision;
+    const doc = example ? createDemo() : createDocument(samples, width, depth);
+    doc.name = name.trim();
+    const handle = await this.bridge.createProject(parent.token, doc.name);
+    try {
+      const repository = this.repository(handle),
+        result = await repository.create(doc, revision);
+      if (version !== this.session.documentVersion || revision !== this.session.revision)
+        throw new Error('创建期间地图已改变，请重新打开已创建的工程');
+      this.session.replace(result.document, true);
+      const previous = this.current;
+      this.current = { handle, repository, entry: result.entry };
+      if (previous) {
+        try {
+          await this.bridge.releaseProject(previous.handle.token);
+        } catch (error) {
+          console.warn('旧工程授权释放失败', error);
+        }
+      }
+      try {
+        await this.bridge.rememberProject(handle.token);
+        this.session.message(`工程已创建：${handle.directory}`);
+      } catch (error) {
+        this.session.message(`工程已创建，近期记录更新失败：${String(error)}`, true);
+      }
       return true;
     } catch (error) {
       await this.bridge.releaseProject(handle.token);

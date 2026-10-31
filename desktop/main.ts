@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
+import * as fs from 'node:fs/promises';
+import type { RecentProject } from '../src/platform/desktop-contract';
 import { NativeProjectStorage } from './native-project-storage';
 import { CloseController } from './close-controller';
 
@@ -17,10 +19,53 @@ if (
 )
   throw new Error('桌面开发入口只允许本机 Vite 服务');
 const trustedUrl = location.href;
-const profile = path.join(__dirname, 'profile');
+const profile =
+  process.env.MAP_EDITOR_PROFILE ?? path.join(app.getPath('appData'), 'ShanheMapEditor');
 mkdirSync(profile, { recursive: true });
 app.setPath('userData', profile);
 const capabilities = new Map<string, NativeProjectStorage>();
+const parents = new Map<string, string>();
+const recentFile = path.join(profile, 'recent-projects.json');
+let recentQueue: Promise<unknown> = Promise.resolve();
+function recentSerial<T>(operation: () => Promise<T>): Promise<T> {
+  const result = recentQueue.then(operation);
+  recentQueue = result.catch(() => undefined);
+  return result;
+}
+async function readRecent(): Promise<RecentProject[]> {
+  try {
+    if ((await fs.stat(recentFile)).size > 64 * 1024) throw new Error('近期工程记录超过大小限制');
+    const data: unknown = JSON.parse(await fs.readFile(recentFile, 'utf8'));
+    if (!Array.isArray(data)) throw new Error('近期工程记录格式错误');
+    const valid = data.filter(
+      (v): v is RecentProject =>
+        v &&
+        typeof v.id === 'string' &&
+        /^[0-9a-f-]{36}$/i.test(v.id) &&
+        typeof v.name === 'string' &&
+        typeof v.directory === 'string' &&
+        path.isAbsolute(v.directory) &&
+        Number.isFinite(v.openedAt),
+    );
+    if (valid.length !== data.length) throw new Error('近期工程记录格式错误');
+    return valid.slice(0, 10);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw new Error(`近期工程记录读取失败：${recentFile}：${String(error)}`);
+  }
+}
+async function writeRecent(items: RecentProject[]) {
+  const temporary = path.join(profile, `recent-${randomUUID()}.tmp`);
+  try {
+    await fs.writeFile(temporary, JSON.stringify(items), { flag: 'wx' });
+    await fs.rename(temporary, recentFile);
+  } finally {
+    await fs.unlink(temporary).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.warn('近期记录临时文件清理失败', error);
+    });
+  }
+}
 let window: BrowserWindow;
 let rendererReady = false;
 const closeController = new CloseController();
@@ -61,6 +106,82 @@ function handle(channel: string, operation: (...args: unknown[]) => unknown) {
   });
 }
 function installHandlers() {
+  handle('project:select-parent', async () => {
+    const result = await dialog.showOpenDialog(window, {
+      title: '选择工程父目录',
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    const directory = path.resolve(result.filePaths[0]),
+      token = randomUUID();
+    parents.set(token, directory);
+    return { token, directory };
+  });
+  handle('project:create', (parentToken, name) => {
+    const parent = parents.get(text(parentToken));
+    if (!parent) throw new Error('工程父目录授权已失效');
+    const folder = text(name).trim();
+    if (
+      !folder ||
+      folder.length > 128 ||
+      /[<>:"/\\|?*\x00-\x1f]/.test(folder) ||
+      /[. ]$/.test(folder) ||
+      /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(folder)
+    )
+      throw new Error('工程名称不能用作文件夹名称');
+    const token = randomUUID(),
+      adapter = new NativeProjectStorage(path.join(parent, folder));
+    capabilities.set(token, adapter);
+    return { token, directory: adapter.root };
+  });
+  handle('recent:list', () => recentSerial(readRecent));
+  handle('recent:remove', (id) =>
+    recentSerial(async () => {
+      await writeRecent((await readRecent()).filter((item) => item.id !== text(id)));
+    }),
+  );
+  handle('recent:open', (id) =>
+    recentSerial(async () => {
+      const item = (await readRecent()).find((item) => item.id === text(id));
+      if (!item) throw new Error('近期工程记录不存在');
+      const token = randomUUID(),
+        adapter = new NativeProjectStorage(item.directory);
+      capabilities.set(token, adapter);
+      return { token, directory: adapter.root };
+    }),
+  );
+  handle('recent:remember', (token) =>
+    recentSerial(async () => {
+      const adapter = storage(token),
+        bytes = await adapter.read('project.map3dproj', 4096);
+      if (!bytes) throw new Error('工程入口不存在');
+      const entry: unknown = JSON.parse(new TextDecoder().decode(bytes));
+      if (
+        !entry ||
+        typeof entry !== 'object' ||
+        !('projectId' in entry) ||
+        typeof entry.projectId !== 'string' ||
+        !/^[0-9a-f-]{36}$/i.test(entry.projectId) ||
+        !('name' in entry) ||
+        typeof entry.name !== 'string'
+      )
+        throw new Error('工程入口无效');
+      const previous = await readRecent();
+      const existing = previous.find(
+        (item) => item.directory.toLowerCase() === adapter.root.toLowerCase(),
+      );
+      const items = previous.filter(
+        (item) => item.directory.toLowerCase() !== adapter.root.toLowerCase(),
+      );
+      items.unshift({
+        id: existing?.id ?? randomUUID(),
+        name: entry.name,
+        directory: adapter.root,
+        openedAt: Date.now(),
+      });
+      await writeRecent(items.slice(0, 10));
+    }),
+  );
   handle('project:select', async (mode) => {
     if (!['create', 'open'].includes(String(mode))) throw new Error('工程选择模式无效');
     let root: string;
@@ -88,6 +209,7 @@ function installHandlers() {
     return { token, directory: adapter.root };
   });
   handle('project:release', (token) => {
+    if (parents.delete(String(token))) return;
     storage(token);
     capabilities.delete(String(token));
   });

@@ -1,7 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopBridge } from '../src/platform/desktop-contract';
 
+let closeCallback: ((id: string) => void) | undefined;
+let pendingClose: string | undefined;
+ipcRenderer.on('editor:close-request', (_event, id: unknown) => {
+  if (typeof id !== 'string') return;
+  if (closeCallback) closeCallback(id);
+  else pendingClose = id;
+});
 const bridge: DesktopBridge = {
+  selectParent: () => ipcRenderer.invoke('project:select-parent'),
+  createProject: (token, name) => ipcRenderer.invoke('project:create', token, name),
+  recentList: () => ipcRenderer.invoke('recent:list'),
+  recentOpen: (id) => ipcRenderer.invoke('recent:open', id),
+  recentRemove: (id) => ipcRenderer.invoke('recent:remove', id),
+  rememberProject: (token) => ipcRenderer.invoke('recent:remember', token),
   selectProject: (mode) => ipcRenderer.invoke('project:select', mode),
   releaseProject: (token) => ipcRenderer.invoke('project:release', token),
   createRoot: (token) => ipcRenderer.invoke('project:create-root', token),
@@ -12,12 +25,16 @@ const bridge: DesktopBridge = {
   list: (token, directory) => ipcRenderer.invoke('project:list', token, directory),
   removeFile: (token, path) => ipcRenderer.invoke('project:remove', token, path),
   onCloseRequest: (callback) => {
-    const listener = (_event: Electron.IpcRendererEvent, id: unknown) => {
-      if (typeof id === 'string') callback(id);
-    };
-    ipcRenderer.on('editor:close-request', listener);
+    closeCallback = callback;
     void ipcRenderer.invoke('editor:close-ready');
-    return () => ipcRenderer.removeListener('editor:close-request', listener);
+    if (pendingClose) {
+      const id = pendingClose;
+      pendingClose = undefined;
+      callback(id);
+    }
+    return () => {
+      if (closeCallback === callback) closeCallback = undefined;
+    };
   },
   finishClose: (id, allow) => ipcRenderer.invoke('editor:finish-close', id, allow),
 };

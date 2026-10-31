@@ -159,10 +159,22 @@ function Modal({
     </div>
   );
 }
-export function App() {
-  const [session] = useState(() => new EditorSession());
-  const [desktop] = useState(() =>
-    window.mapEditorDesktop ? new DesktopProjectSession(session, window.mapEditorDesktop) : null,
+export function App({
+  initialSession,
+  initialDesktop,
+  onHome,
+}: {
+  initialSession?: EditorSession;
+  initialDesktop?: DesktopProjectSession;
+  onHome?: (create?: boolean) => void;
+} = {}) {
+  const [session] = useState(() => initialSession ?? new EditorSession());
+  const [desktop] = useState(
+    () =>
+      initialDesktop ??
+      (window.mapEditorDesktop
+        ? new DesktopProjectSession(session, window.mapEditorDesktop)
+        : null),
   );
   const closeRequest = useRef<string | null>(null);
   useSyncExternalStore(session.subscribe, session.getSnapshot);
@@ -559,7 +571,11 @@ export function App() {
       </header>
       <div className="toolbar">
         <div className="toolbar-group">
-          <Button icon={Plus} onClick={() => uiAction(() => setModal('new'))}>
+          {onHome && <Button onClick={() => uiAction(() => onHome())}>返回首页</Button>}
+          <Button
+            icon={Plus}
+            onClick={() => uiAction(() => (onHome ? onHome(true) : setModal('new')))}
+          >
             新建
           </Button>
           <Button icon={FolderOpen} onClick={() => uiAction(() => void open())}>

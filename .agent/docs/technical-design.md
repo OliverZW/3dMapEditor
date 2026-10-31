@@ -287,7 +287,7 @@ Worker 带文档版本和任务 ID，结果过期丢弃。大数组使用快照�
 
 `ProjectRepository` 已实现创建、打开、串行保存、新版备份/恢复、工程隔离草稿和可丢弃会话状态。`ProjectStorage` 要求适配器提供根目录隔离、预算读取、不可覆盖写和比较并原子提交入口；第 1 步以故障注入内存适配器验证，不包含真实桌面目录读写。
 
-第 2 步增加 Electron 主进程、受限 preload、原生 ProjectStorage 适配及保存退出保护，详见[桌面开发](desktop-development.md)。首页、近期工程和完整创建交互仍属于[新版本计划](new-version-plan.md)第 3 步；不增加 Web 发布，MSI 在第 7 步处理。平台文件系统 API 不进入核心。
+第 2 步增加 Electron 主进程、受限 preload、原生 ProjectStorage 适配及保存退出保护，详见[桌面开发](desktop-development.md)。首页、近期工程和完整创建交互已按[新版本计划](new-version-plan.md)第 3 步接入；不增加 Web 发布，MSI 在第 7 步处理。平台文件系统 API 不进入核心。
 
 ## 9. 导出与平台边界
 
