@@ -142,6 +142,10 @@ const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Applica
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: '导入树木模型', exact: true }).click();
     await (await chooser).setFiles(fixture);
+    await page
+      .getByRole('dialog', { name: '导入模型' })
+      .getByRole('button', { name: '确认导入' })
+      .click();
     await page.getByRole('option').filter({ hasText: 'custom-pine' }).waitFor();
     assert.equal(await page.locator('.current-model strong').innerText(), 'custom-pine');
     assert.equal(await page.getByRole('dialog').count(), 0);

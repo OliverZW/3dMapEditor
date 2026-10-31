@@ -32,9 +32,9 @@ import { EditorSession } from '../application/editor-session';
 import { DesktopProjectSession } from '../application/desktop-project-session';
 import { EditorViewport } from '../renderer/editor-viewport';
 import { importGlb } from '../renderer/models';
-import type { AssetKind, Tool } from '../core/types';
+import type { AssetKind, ModelAsset, Tool } from '../core/types';
 import { getFactionCells, hexIndex, worldHex } from '../core/hex';
-import { assetReferenceCounts } from '../core/assets';
+import { assetReferenceCounts, isBuiltinAsset } from '../core/assets';
 import { RiverInspector } from './RiverInspector';
 import { decodeProject, encodeProject } from '../io/project';
 import { decodeHeightPng, heightFiles, importHeights } from '../io/heightmap';
@@ -42,6 +42,7 @@ import type { DecodedHeight } from '../io/heightmap';
 import { download, loadDraft, saveDraft, selectFile } from '../platform/files';
 import { exportCocos, preflightCocos } from '../io/cocos-export';
 import { ModelDetails } from './ModelDetails';
+import { ModelImportForm } from './ModelImportForm';
 import { VegetationPalette } from './VegetationPalette';
 import { InspectorActions } from './InspectorActions';
 import { BrushPalette } from './BrushPalette';
@@ -177,6 +178,20 @@ export function App({
         : null),
   );
   const closeRequest = useRef<string | null>(null);
+  const importResolver = useRef<((id: string | null) => void) | null>(null);
+  const importAlive = useRef(true);
+  const [importDraft, setImportDraft] = useState<{ asset: ModelAsset; version: number } | null>(
+    null,
+  );
+  const [importFailure, setImportFailure] = useState('');
+  useEffect(() => {
+    importAlive.current = true;
+    return () => {
+      importAlive.current = false;
+      importResolver.current?.(null);
+      importResolver.current = null;
+    };
+  }, []);
   useSyncExternalStore(session.subscribe, session.getSnapshot);
   const inspectorElement = useRef<HTMLElement>(null);
   const viewportElement = useRef<HTMLDivElement>(null),
@@ -379,21 +394,43 @@ export function App({
     if (session.busy) return null;
     const version = session.documentVersion;
     try {
+      session.busy = true;
+      session.notify();
       const file = await selectFile('.glb');
       if (!file) return null;
-      session.busy = true;
       session.message('正在检查并读取模型…');
       const asset = await importGlb(file, kind);
-      session.addAsset(asset, version);
-      setResourceId(asset.id);
-      return asset.id;
+      if (!importAlive.current) return null;
+      if (version !== session.documentVersion) throw new Error('工程已切换，请重新导入模型');
+      setImportDraft({ asset, version });
+      return await new Promise<string | null>((resolve) => {
+        importResolver.current = resolve;
+      });
     } catch (error) {
       report(error);
+      if (importAlive.current)
+        setImportFailure(error instanceof Error ? error.message : String(error));
       return null;
     } finally {
       session.busy = false;
       session.notify();
     }
+  }
+  function finishImport(asset?: ModelAsset): string | null {
+    if (asset && importDraft) {
+      try {
+        session.addAsset(asset, importDraft.version);
+        setResourceId(asset.id);
+        setCategory(asset.kind);
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+    }
+    const resolve = importResolver.current;
+    importResolver.current = null;
+    setImportDraft(null);
+    resolve?.(asset?.id ?? null);
+    return null;
   }
   useEffect(() => {
     try {
@@ -465,7 +502,8 @@ export function App({
         return;
       if ((e.key === 'Enter' || e.code === 'Space') && (e.target as HTMLElement).closest('button'))
         return;
-      if ((modal || heightImport || guard) && e.key !== 'Escape') return;
+      if ((modal || heightImport || guard || importDraft || importFailure) && e.key !== 'Escape')
+        return;
       if (navigation && navigation.getSnapshot().gesture !== 'idle') return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key.toLowerCase() === 's') {
@@ -515,8 +553,10 @@ export function App({
     return () => window.removeEventListener('keydown', key);
   });
   useEffect(() => {
-    viewport.current?.setInputBlocked(!!modal || !!heightImport || !!guard || session.busy);
-  }, [modal, heightImport, guard, navigation, session.busy]);
+    viewport.current?.setInputBlocked(
+      !!modal || !!heightImport || !!guard || !!importDraft || !!importFailure || session.busy,
+    );
+  }, [modal, heightImport, guard, importDraft, importFailure, navigation, session.busy]);
   useEffect(() => {
     const content = inspectorElement.current?.querySelector('.inspector-content');
     if (content) content.scrollTop = 0;
@@ -1330,8 +1370,8 @@ export function App({
                       </div>
                       <strong>{a.name}</strong>
                       <small>
-                        {a.builtin ? '内置 GLB' : '自定义 GLB'} · {referenceCounts.get(a.id) ?? 0}{' '}
-                        处引用
+                        {isBuiltinAsset(a) ? '内置 GLB' : '自定义 GLB'} ·{' '}
+                        {referenceCounts.get(a.id) ?? 0} 处引用
                       </small>
                     </button>
                   ))}
@@ -1385,6 +1425,35 @@ export function App({
                 </>
               )}
             </div>
+          </div>
+        </Modal>
+      )}
+      {importDraft && (
+        <Modal
+          title="导入模型"
+          subtitle="确认分类和基础校正后加入当前工程。"
+          onClose={() => {
+            finishImport();
+          }}
+        >
+          <ModelImportForm
+            asset={importDraft.asset}
+            onCancel={() => {
+              finishImport();
+            }}
+            onConfirm={finishImport}
+          />
+        </Modal>
+      )}
+      {importFailure && (
+        <Modal title="模型导入失败" onClose={() => setImportFailure('')}>
+          <div className="modal-body">
+            <p role="alert" className="error-text">
+              {importFailure}
+            </p>
+          </div>
+          <div className="modal-actions">
+            <Button onClick={() => setImportFailure('')}>知道了</Button>
           </div>
         </Modal>
       )}

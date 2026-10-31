@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trees, Sprout, Plus, Info, Search } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import type { ModelAsset } from '../core/types';
-import { assetReferenceCounts } from '../core/assets';
+import { assetReferenceCounts, isBuiltinAsset } from '../core/assets';
 import { VirtualList } from './VirtualList';
 import { Button } from './controls';
 const assetId = (asset: ModelAsset) => asset.id;
@@ -65,7 +65,9 @@ export function VegetationPalette({
           void (async () => {
             const id = await onImport(kind);
             if (id) {
-              session.selectBrushAsset(kind, id);
+              const imported = session.doc.assets.find((asset) => asset.id === id);
+              if (imported?.kind === kind) session.selectBrushAsset(kind, id);
+              else if (imported) session.setAsset(id);
               if (alive.current) setSearch('');
             }
           })()
@@ -102,7 +104,7 @@ export function VegetationPalette({
             <span>
               <strong>{asset.name}</strong>
               <small>
-                {asset.builtin ? '内置' : '自定义 GLB'} · {counts.get(asset.id) ?? 0} 处引用
+                {isBuiltinAsset(asset) ? '内置' : '自定义 GLB'} · {counts.get(asset.id) ?? 0} 处引用
               </small>
             </span>
           </>

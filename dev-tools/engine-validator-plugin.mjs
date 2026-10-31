@@ -35,9 +35,11 @@ export function engineValidatorPlugin() {
       );
       let code = standaloneCode(ajv, references);
       const helpers = new Map();
-      code = code.replace(/require\("([^"]+)"\)(?:\.default)?/g, (_match, helper) => {
+      code = code.replace(/require\("([^"]+)"\)(\.default)?/g, (_match, helper, defaultExport) => {
         if (!helpers.has(helper)) helpers.set(helper, `runtimeHelper${helpers.size}`);
-        return helpers.get(helper);
+        const name = helpers.get(helper);
+        // Vite 浏览器环境可能把 CommonJS exports.default 包装成对象；Node 环境可能直接给出函数。
+        return defaultExport ? `(${name}.default ?? ${name})` : name;
       });
       const imports = [...helpers]
         .map(

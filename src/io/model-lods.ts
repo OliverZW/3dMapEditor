@@ -8,6 +8,7 @@ export type ModelLevel = 0 | 1 | 2;
 
 /** 只对内容完全相同的内置资源启用派生模型，不能以 ID 代替内容身份。 */
 export function builtinModelLods(asset: ModelAsset) {
+  if (asset.resource?.origin === 'project') return undefined;
   const entry = models.assets.find((entry) => entry.id === asset.id && entry.hash === asset.hash);
   return entry?.lod?.sourceHash === asset.hash ? entry.lod.levels : undefined;
 }

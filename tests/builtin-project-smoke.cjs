@@ -91,6 +91,8 @@ const assert = require('node:assert/strict');
     });
     await (await pendingProject).saveAs(projectPath);
     const pendingExport = page.waitForEvent('download');
+    // 导出预检失败时先报告真实错误，避免悬空下载等待掩盖失败原因。
+    void pendingExport.catch(() => {});
     await page.evaluate(async () => {
       const { exportCocos } = await import('/src/io/cocos-export.ts');
       const result = await exportCocos(window.builtinDoc, {
@@ -129,7 +131,9 @@ const assert = require('node:assert/strict');
         await modal.locator('.model-details h3').filter({ hasText: name }).waitFor();
         await page.waitForTimeout(500);
         assert.equal(await modal.locator('.model-preview[data-error]').count(), 0);
-        assert.equal(await modal.getByRole('button', { name: '删除资源', exact: true }).count(), 0);
+        // v4 备份内的模型恢复为工程自有；被引用时仍由引用保护阻止删除。
+        assert.equal(await modal.getByRole('button', { name: '删除资源', exact: true }).count(), 1);
+        assert.equal(await modal.getByText(/使用位置（/).count(), 1);
       }
     }
     await page.screenshot({ path: path.join(artifacts, 'builtin-library.png') });
@@ -142,7 +146,7 @@ const assert = require('node:assert/strict');
     assert.deepEqual(savedFiles['objects.json'], original['objects.json']);
     assert.deepEqual(errors, []);
     console.log(
-      '固定功能场景：界面重开、八个模型详情预览、内置删除限制和再次保存通过，页面错误0。',
+      '固定功能场景：界面重开、八个工程自有模型详情预览、引用保护和再次保存通过，页面错误0。',
     );
   } finally {
     await browser.close();

@@ -1,15 +1,31 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { ModelAsset } from '../core/types';
 import { ModelLibrary } from '../renderer/models';
-export function AssetPreview({ asset }: { asset: ModelAsset }) {
+export function AssetPreview({
+  asset,
+  showGround = false,
+}: {
+  asset: ModelAsset;
+  showGround?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const [previewError, setPreviewError] = useState('');
   useEffect(() => {
     const element = ref.current!;
+    setPreviewError('');
     let alive = true,
       frame = 0;
-    const library = new ModelLibrary(),
+    let renderer: THREE.WebGLRenderer;
+    try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch (error) {
+      element.dataset.error = String(error);
+      setPreviewError(`模型预览不可用：${String(error)}`);
+      return;
+    }
+    delete element.dataset.error;
+    const library = new ModelLibrary();
     renderer.setSize(element.clientWidth, 160);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.appendChild(renderer.domElement);
@@ -31,28 +47,64 @@ export function AssetPreview({ asset }: { asset: ModelAsset }) {
         const box = new THREE.Box3().setFromObject(group),
           size = box.getSize(new THREE.Vector3()),
           center = box.getCenter(new THREE.Vector3());
-        group.position.sub(center);
-        const distance = Math.max(size.x, size.y, size.z) * 2.2;
-        camera.position.set(distance * 0.7, distance * 0.55, distance * 0.8);
-        camera.lookAt(0, 0, 0);
+        if (showGround) {
+          const extent = Math.max(
+            size.x,
+            size.z,
+            size.y,
+            Math.abs(box.min.y),
+            Math.abs(box.max.y),
+            0.1,
+          );
+          const grid = new THREE.GridHelper(extent * 3, 12, 0x6ca9ca, 0x394e5a);
+          grid.position.set(center.x, 0, center.z);
+          scene.add(grid);
+          camera.position.set(center.x + extent * 2, extent * 1.6, center.z + extent * 2);
+          camera.lookAt(center.x, (box.max.y + Math.min(0, box.min.y)) / 2, center.z);
+        } else {
+          group.position.sub(center);
+          const distance = Math.max(size.x, size.y, size.z) * 2.2;
+          camera.position.set(distance * 0.7, distance * 0.55, distance * 0.8);
+          camera.lookAt(0, 0, 0);
+        }
         const animate = () => {
           frame = requestAnimationFrame(animate);
-          group.rotation.y += 0.003;
+          if (!showGround) group.rotation.y += 0.003;
           renderer.render(scene, camera);
         };
         animate();
       })
       .catch((e) => {
-        if (alive) element.dataset.error = String(e);
+        if (alive) {
+          element.dataset.error = String(e);
+          setPreviewError(`模型预览失败：${String(e)}`);
+        }
       });
     return () => {
       alive = false;
       cancelAnimationFrame(frame);
       library.dispose();
+      scene.traverse((object) => {
+        if (object instanceof THREE.GridHelper) {
+          object.geometry.dispose();
+          for (const material of Array.isArray(object.material)
+            ? object.material
+            : [object.material])
+            material.dispose();
+        }
+      });
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
     };
-  }, [asset.id, asset.hash, asset.scale, asset.yaw, asset.offset]);
-  return <div ref={ref} className="model-preview" aria-label="模型三维预览" />;
+  }, [asset.id, asset.hash, asset.kind, asset.scale, asset.yaw, asset.offset, showGround]);
+  return (
+    <div ref={ref} className="model-preview" aria-label="模型三维预览">
+      {previewError && (
+        <p className="error-text" role="alert">
+          {previewError}
+        </p>
+      )}
+    </div>
+  );
 }

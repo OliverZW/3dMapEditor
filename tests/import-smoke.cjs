@@ -37,6 +37,10 @@ const edge = path.join(
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: '导入静态 GLB' }).click();
     await (await chooser).setFiles(fixture);
+    await page
+      .getByRole('dialog', { name: '导入模型' })
+      .getByRole('button', { name: '确认导入' })
+      .click();
     await page.getByRole('heading', { name: 'custom-pine', exact: true }).waitFor();
     await page.getByRole('button', { name: '用于当前工具' }).click();
     const save = page.waitForEvent('download');

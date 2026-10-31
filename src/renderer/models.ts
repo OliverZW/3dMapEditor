@@ -77,6 +77,8 @@ export class ModelLibrary {
   }
   private async load(asset: ModelAsset, level: ModelLevel): Promise<THREE.Group> {
     const source = level ? await this.get(asset) : undefined;
+    if (!level && asset.resource?.origin === 'project' && !asset.bytes)
+      throw new Error(`工程模型 ${asset.name} 缺少 GLB 数据`);
     const bytes = level
       ? await loadModelLod(asset, level)
       : (asset.bytes ?? builtinResourceBytes(asset.hash));

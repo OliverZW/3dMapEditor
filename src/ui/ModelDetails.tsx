@@ -3,6 +3,7 @@ import type { ModelAsset } from '../core/types';
 import { AssetPreview } from './AssetPreview';
 import { Group, NumberField, Button } from './controls';
 import { Trash2 } from 'lucide-react';
+import { assetReferenceLocations, isBuiltinAsset } from '../core/assets';
 const KIND_LABEL = { city: '城池', fortress: '要塞', tree: '树木', grass: '草丛' };
 export function ModelDetails({
   session,
@@ -13,12 +14,14 @@ export function ModelDetails({
   resource: ModelAsset;
   onDeleted: () => void;
 }) {
+  const locations = assetReferenceLocations(session.doc, resource.id);
+  const referenceCount = session.assetReferences(resource.id);
   return (
     <div className="model-details">
       <AssetPreview asset={resource} />
       <h3>{resource.name}</h3>
       <p className="muted">
-        {KIND_LABEL[resource.kind]} / {resource.builtin ? '内置资源' : 'GLB 模型'}
+        {KIND_LABEL[resource.kind]} / {isBuiltinAsset(resource) ? '内置资源' : '工程自有 GLB'}
       </p>
       <div className="overview-row">
         <span>尺寸 (m)</span>
@@ -76,8 +79,21 @@ export function ModelDetails({
         />
       </Group>
       <p className="tip">{resource.source}</p>
+      {locations.length > 0 && (
+        <div className="asset-references">
+          <strong>使用位置（{referenceCount}）</strong>
+          <ul>
+            {locations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          {referenceCount > locations.length && (
+            <p>另有 {referenceCount - locations.length} 处引用</p>
+          )}
+        </div>
+      )}
 
-      {!resource.builtin && (
+      {!isBuiltinAsset(resource) && (
         <Button
           className="full danger"
           icon={Trash2}

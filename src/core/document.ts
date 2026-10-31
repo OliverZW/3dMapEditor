@@ -82,6 +82,9 @@ export function validateDocument(doc: MapDocument): void {
     if (
       !['city', 'fortress', 'tree', 'grass'].includes(a.kind) ||
       !a.id ||
+      typeof a.name !== 'string' ||
+      !a.name.trim() ||
+      a.name.length > 128 ||
       !a.size.every((v) => Number.isFinite(v) && v >= 0) ||
       ![a.scale, a.yaw, a.offset].every(Number.isFinite) ||
       a.scale <= 0 ||
