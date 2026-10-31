@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
+import { DesktopProjectSession } from '../application/desktop-project-session';
 import { EditorViewport } from '../renderer/editor-viewport';
 import { importGlb } from '../renderer/models';
 import type { AssetKind, Tool } from '../core/types';
@@ -160,6 +161,10 @@ function Modal({
 }
 export function App() {
   const [session] = useState(() => new EditorSession());
+  const [desktop] = useState(() =>
+    window.mapEditorDesktop ? new DesktopProjectSession(session, window.mapEditorDesktop) : null,
+  );
+  const closeRequest = useRef<string | null>(null);
   useSyncExternalStore(session.subscribe, session.getSnapshot);
   const inspectorElement = useRef<HTMLElement>(null);
   const viewportElement = useRef<HTMLDivElement>(null),
@@ -219,6 +224,10 @@ export function App() {
     session.notify();
   }
   function uiAction(fn: () => void) {
+    if (session.busy) {
+      session.message('请等待当前操作完成', true);
+      return;
+    }
     if (
       session.riverPreview ||
       session.sitePlacement ||
@@ -232,6 +241,10 @@ export function App() {
     else fn();
   }
   async function save() {
+    if (session.busy) {
+      session.message('请等待当前操作完成', true);
+      return false;
+    }
     try {
       if (
         session.riverPreview ||
@@ -242,6 +255,11 @@ export function App() {
         throw new Error('请先确认或取消当前预览');
       session.endStroke();
       session.commitSurface();
+      if (desktop) {
+        session.busy = true;
+        session.notify();
+        return await desktop.save();
+      }
       const revision = session.revision;
       download(encodeProject(doc), `${doc.name}.map3d`);
       if (session.revision === revision) session.dirty = false;
@@ -250,13 +268,25 @@ export function App() {
     } catch (e) {
       report(e);
       return false;
+    } finally {
+      if (desktop) {
+        session.busy = false;
+        session.notify();
+      }
     }
   }
   function report(e: unknown) {
     session.message(e instanceof Error ? e.message : String(e), true);
   }
   async function open() {
+    if (session.busy) return;
     try {
+      if (desktop) {
+        session.busy = true;
+        session.notify();
+        if (await desktop.open()) viewport.current?.frameMap();
+        return;
+      }
       const file = await selectFile('.map3d');
       if (!file) return;
       const candidate = decodeProject(new Uint8Array(await file.arrayBuffer()));
@@ -264,8 +294,49 @@ export function App() {
       viewport.current?.frameMap();
     } catch (e) {
       report(e);
+    } finally {
+      if (desktop) {
+        session.busy = false;
+        session.notify();
+      }
     }
   }
+  function cancelGuard() {
+    if (session.busy) return;
+    setGuard(null);
+    const id = closeRequest.current;
+    closeRequest.current = null;
+    if (id) void window.mapEditorDesktop?.finishClose(id, false).catch(report);
+  }
+  useEffect(() => {
+    const bridge = window.mapEditorDesktop;
+    if (!bridge) return;
+    return bridge.onCloseRequest((id) => {
+      if (
+        session.busy ||
+        session.riverPreview ||
+        session.sitePlacement ||
+        session.movingSite ||
+        session.resizePreview
+      ) {
+        session.message('请先完成当前操作或确认、取消预览，再退出', true);
+        void bridge.finishClose(id, false).catch(report);
+        return;
+      }
+      session.endStroke();
+      session.commitSurface();
+      const finish = () => {
+        closeRequest.current = null;
+        viewport.current?.dispose();
+        viewport.current = null;
+        void bridge.finishClose(id, true).catch(report);
+      };
+      if (session.dirty) {
+        closeRequest.current = id;
+        setGuard(() => finish);
+      } else finish();
+    });
+  }, [session]);
   async function importHeight() {
     try {
       const file = await selectFile('.png');
@@ -321,9 +392,10 @@ export function App() {
     } catch (e) {
       setFatal(e instanceof Error ? e.message : String(e));
     }
-    void loadDraft()
-      .then(setDraft)
-      .catch((e) => setDraftStatus(`草稿不可用：${String(e)}`));
+    if (!desktop)
+      void loadDraft()
+        .then(setDraft)
+        .catch((e) => setDraftStatus(`草稿不可用：${String(e)}`));
     return () => {
       viewport.current?.dispose();
       viewport.current = null;
@@ -332,7 +404,7 @@ export function App() {
   useEffect(() => {
     let savedRevision = -1;
     const timer = setInterval(() => {
-      if (session.dirty && session.revision !== savedRevision && !session.busy) {
+      if (!desktop && session.dirty && session.revision !== savedRevision && !session.busy) {
         try {
           const revision = session.revision,
             bytes = encodeProject(session.doc);
@@ -350,7 +422,7 @@ export function App() {
       }
     }, 30000);
     const unload = (e: BeforeUnloadEvent) => {
-      if (session.dirty) {
+      if (!desktop && session.dirty) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -360,7 +432,7 @@ export function App() {
       clearInterval(timer);
       window.removeEventListener('beforeunload', unload);
     };
-  }, [session]);
+  }, [session, desktop]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.isComposing) return;
@@ -396,7 +468,7 @@ export function App() {
       } else if (e.key === 'Escape') {
         if (modal) setModal(null);
         else if (heightImport) setHeightImport(null);
-        else if (guard) setGuard(null);
+        else if (guard) cancelGuard();
         else if (session.resizePreview) session.cancelResize();
         else if (session.riverPreview || session.sitePlacement || session.movingSite)
           session.cancelPreview();
@@ -431,8 +503,8 @@ export function App() {
     return () => window.removeEventListener('keydown', key);
   });
   useEffect(() => {
-    viewport.current?.setInputBlocked(!!modal || !!heightImport || !!guard);
-  }, [modal, heightImport, guard, navigation]);
+    viewport.current?.setInputBlocked(!!modal || !!heightImport || !!guard || session.busy);
+  }, [modal, heightImport, guard, navigation, session.busy]);
   useEffect(() => {
     const content = inspectorElement.current?.querySelector('.inspector-content');
     if (content) content.scrollTop = 0;
@@ -476,7 +548,7 @@ export function App() {
         <div className="document-name">
           <span className={session.dirty ? 'dirty-dot' : 'clean-dot'} />
           {doc.name}
-          <small>.map3d</small>
+          <small>{desktop ? '.map3dproj' : '.map3d'}</small>
         </div>
         <div className="header-right">
           <span className="version-tag">本地工程 · 0.1</span>
@@ -493,7 +565,7 @@ export function App() {
           <Button icon={FolderOpen} onClick={() => uiAction(() => void open())}>
             打开
           </Button>
-          <Button icon={Save} onClick={() => void save()} title="Ctrl + S">
+          <Button icon={Save} onClick={() => void save()} title="Ctrl + S" disabled={session.busy}>
             保存工程
           </Button>
         </div>
@@ -1040,12 +1112,15 @@ export function App() {
       {guard && (
         <Modal
           title="保留当前编辑？"
-          subtitle="地图包含尚未下载保存的修改。"
-          onClose={() => setGuard(null)}
+          subtitle={desktop ? '地图包含尚未保存的修改。' : '地图包含尚未下载保存的修改。'}
+          onClose={cancelGuard}
         >
           <div className="modal-actions">
-            <Button onClick={() => setGuard(null)}>取消</Button>
+            <Button onClick={cancelGuard} disabled={session.busy}>
+              取消
+            </Button>
             <Button
+              disabled={session.busy}
               onClick={() => {
                 const fn = guard;
                 setGuard(null);
@@ -1056,6 +1131,7 @@ export function App() {
             </Button>
             <Button
               className="primary"
+              disabled={session.busy}
               onClick={() => {
                 void save().then((ok) => {
                   if (ok) {
@@ -1066,7 +1142,7 @@ export function App() {
                 });
               }}
             >
-              下载保存后继续
+              {desktop ? '保存后继续' : '下载保存后继续'}
             </Button>
           </div>
         </Modal>
@@ -1104,9 +1180,16 @@ export function App() {
                 )
               }
               onClick={() => {
-                session.newMap(newSamples, newWidth, newDepth);
-                viewport.current?.frameMap();
-                setModal(null);
+                void (async () => {
+                  try {
+                    session.newMap(newSamples, newWidth, newDepth);
+                    await desktop?.reset();
+                    viewport.current?.frameMap();
+                    setModal(null);
+                  } catch (error) {
+                    report(error);
+                  }
+                })();
               }}
             >
               创建地图

@@ -2,6 +2,7 @@ import { defineConfig, normalizePath } from 'vite';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { engineValidatorPlugin } from './dev-tools/engine-validator-plugin.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const manifests = new Set(
@@ -13,8 +14,10 @@ const prefix = '\0builtin-manifest:';
 
 export default defineConfig({
   publicDir: 'editor-assets',
+  optimizeDeps: { include: ['ajv/dist/runtime/equal.js', 'ajv/dist/runtime/ucs2length.js'] },
   // 素材文件照常静态发布；仅将纯描述编译为模块，不在 src 复制清单。
   plugins: [
+    engineValidatorPlugin(),
     {
       name: 'builtin-manifests',
       enforce: 'pre',

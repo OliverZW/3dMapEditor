@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs';
 import Ajv from 'ajv';
 import { describe, expect, it } from 'vitest';
+import { validators } from 'virtual:engine-export-validators';
 
 const read = (name) =>
   JSON.parse(readFileSync(new URL('../.agent/docs/contracts/' + name, import.meta.url), 'utf8'));
 const schema = read('engine-export-v2.schema.json');
 const example = read('engine-export-v2.example.json');
 const ajv = new Ajv({ allErrors: true, strict: true, strictTypes: false, strictRequired: false });
-const validateManifest = ajv.compile(schema);
-const validator = (name) => ajv.getSchema(schema.$id + '#/definitions/' + name);
+ajv.addSchema(schema);
+const validateManifest = validators[''];
+const validator = (name) => validators[name];
 const manifest = () => structuredClone(example.manifest);
 const switches = ['trees', 'grass', 'water', 'sites', 'logic'];
 
@@ -16,6 +18,7 @@ describe('引擎导出 v2 字段契约（不代替包字节与引擎校验）', 
   it('schema 自身合法，根样例及全部子文档符合契约', () => {
     expect(ajv.validateSchema(schema)).toBe(true);
     expect(validateManifest(example.manifest), JSON.stringify(validateManifest.errors)).toBe(true);
+    expect(validateManifest(example.manifest)).toBe(ajv.getSchema(schema.$id)(example.manifest));
     for (const [name, document] of Object.entries(example.documents)) {
       const validate = validator(name);
       expect(validate, name).toBeTypeOf('function');

@@ -1,5 +1,4 @@
-import Ajv from 'ajv';
-import schema from '../../.agent/docs/contracts/engine-export-v2.schema.json';
+import { validators } from 'virtual:engine-export-validators';
 import { imageHash, validateSurfacePng } from './image-validation';
 import { referenceImageInfo } from './engine-export-files';
 import { readGlb } from './engine-glb';
@@ -16,8 +15,6 @@ import type {
   WaterDescription,
 } from './engine-export-types';
 
-const ajv = new Ajv({ allErrors: true, strict: true, strictTypes: false, strictRequired: false });
-ajv.addSchema(schema);
 function fail(code: string, path: string, reason: string): never {
   throw new Error(`${code}：${path}：${reason}`);
 }
@@ -64,8 +61,15 @@ function parseJson(bytes: Uint8Array, path: string): unknown {
   return value;
 }
 function contract<T>(value: unknown, definition: string, path: string): T {
-  const validate = ajv.getSchema(schema.$id + (definition ? `#/definitions/${definition}` : ''))!;
-  if (!validate(value)) fail('E_SCHEMA', path, ajv.errorsText(validate.errors));
+  const validate = validators[definition];
+  if (!validate) fail('E_SCHEMA', path, `校验契约不存在：${definition}`);
+  if (!validate(value))
+    fail(
+      'E_SCHEMA',
+      path,
+      validate.errors?.map((error) => `data${error.instancePath} ${error.message}`).join(', ') ??
+        '结构无效',
+    );
   return value as T;
 }
 

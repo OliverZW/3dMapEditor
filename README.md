@@ -1,6 +1,6 @@
 ﻿# 山河 · 三维战略地图编辑器
 
-山河是基于 Three.js、React 和 TypeScript 的三维战略地图编辑器，在桌面浏览器中运行。它将连续高度场地形与六边形逻辑网格结合，用于制作包含地貌、植被、河流、据点和势力范围的地图，也可作为定制地图编辑器的开发基础。
+山河是基于 Three.js、React 和 TypeScript 的三维战略地图编辑器，支持 Windows Electron 桌面开发入口，并保留浏览器开发回归入口。它将连续高度场地形与六边形逻辑网格结合，用于制作包含地貌、植被、河流、据点和势力范围的地图，也可作为定制地图编辑器的开发基础。
 
 ## 主要功能
 
@@ -14,24 +14,26 @@
 
 ## 构建自己的编辑器
 
-准备 Node.js 22.12 或更高版本，以及支持 WebGL 的桌面 Chrome 或 Edge。在工程根目录执行：
+准备 Node.js 22.12 或更高版本。在工程根目录执行：
 
 ```sh
 npm ci
-npm run dev
+npm run dev:desktop
 ```
 
-打开终端显示的本机地址，即可开发和调试编辑器。首次启动会展示可编辑的示例地图，也可以新建空白地图。
+开发命令启动本地服务和 Electron 桌面窗口，退出窗口后停止服务。桌面“保存工程”首次选择一个尚不存在的新工程目录，之后直接保存；“打开”选择 `project.map3dproj`。关闭窗口提供保存、放弃、取消保护。首页和示例导入选项仍按第 3 步实施，当前启动内容沿用原有示例。
 
-检查代码并生成生产版：
+详见[Windows 桌面开发](.agent/docs/desktop-development.md)。浏览器调试可运行 `npm run dev`，访问终端显示的本机地址；这是保留的开发回归入口，不作为新版 Web 发布交付。
+
+检查代码及运行桌面回归：
 
 ```sh
 npm test
 npm run check:unused
-npm run build
+npm run test:desktop
 ```
 
-构建结果位于 `dist`，包含应用、内置资源、Windows 启动器和发布记录。Windows 下双击 `dist/start-editor.bat`，浏览器会打开 `http://127.0.0.1:4178/`；保持启动窗口打开，关闭窗口或按 Ctrl+C 停止服务。生产版使用 Windows 自带 PowerShell，运行时无需 Node.js 或开发依赖。
+现有 `npm run build` 暂时仍沿用旧生产流程；统一 MSI 构建在第 7 步实现，本轮不更新已有 `dist`。旧构建结果位于 `dist`，包含应用、内置资源、Windows 启动器和发布记录。Windows 下双击 `dist/start-editor.bat`，浏览器会打开 `http://127.0.0.1:4178/`；保持启动窗口打开，关闭窗口或按 Ctrl+C 停止服务。生产版使用 Windows 自带 PowerShell，运行时无需 Node.js 或开发依赖。
 
 也可以在开发环境执行 `npm run preview` 预览构建结果。`dist` 中的网页文件通过 HTTP 服务访问，不直接双击 `index.html`。
 
@@ -46,7 +48,8 @@ npm run build
 | 编辑流程、工具状态和用例协调 | `src/application/` |
 | 三维显示、材质、镜头和拾取 | `src/renderer/` |
 | 工程格式、资源读写和导出适配 | `src/io/` |
-| 浏览器文件操作与草稿存储 | `src/platform/` |
+| 平台文件操作、桌面桥接与浏览器草稿 | `src/platform/` |
+| Electron 主进程、preload 和原生目录适配 | `desktop/` |
 | 内置模型、贴图和分类清单 | `editor-assets/` |
 | 启动示例地图 | `src/core/demo.ts` |
 | Cocos 数据接入说明和读取示例 | `engine-adapters/cocos/` |

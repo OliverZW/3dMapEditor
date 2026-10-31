@@ -36,20 +36,23 @@
     "test:render-optimization": "node tests/render-optimization.cjs",
     "test:render-updates": "node tests/render-update-smoke.cjs",
     "test:export-contract": "vitest run tests/engine-export-contract.test.mjs",
-    "test:engine-export": "vitest run tests/engine-export.test.mjs tests/engine-export-contract.test.mjs"
+    "test:engine-export": "vitest run tests/engine-export.test.mjs tests/engine-export-contract.test.mjs",
+    "dev:desktop": "tsc -b && node dev-tools/start-desktop.mjs",
+    "test:desktop": "node tests/desktop-smoke.cjs"
   },
   "dependencies": {
+    "ajv": "8.17.1",
     "fflate": "0.8.2",
     "lucide-react": "0.468.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "three": "0.186.1",
-    "ajv": "8.17.1"
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@types/three": "0.183.1",
+    "electron": "45.2.1",
     "meshoptimizer": "1.0.1",
     "playwright": "1.62.1",
     "prettier": "3.6.2",

@@ -27,6 +27,7 @@
 │  └─ docs/                   需求、设计、实施记录、目录说明
 │     └─ screenshots/         浮层外观设计参考
 ├─ src/                       编辑器应用的源码，另混有示例与生成数据
+├─ desktop/                   Electron 主进程、受限 preload 和原生工程存储适配
 ├─ editor-assets/             地图内置素材唯一来源、分类清单和来源记录
 │  ├─ favicon.svg             应用图标
 │  ├─ models/                 八个内置 GLB、元数据及 manifest.json
@@ -121,7 +122,7 @@
 
 ### src/io：工程格式与资源编解码
 
-- `project.ts`：自包含 `.map3d` 工程的 ZIP 保存、打开、校验及旧版本迁移；当前版本为 v3。
+- `project.ts`：v4 自包含 `.map3d` 备份的 ZIP 保存、打开与旧版拒绝；`project-codec.ts` 复用目录/备份数据编解码，`project-storage.ts` 提供平台无关目录存储服务。
 - `heightmap.ts`：高度 PNG 的读写及方向、高程参数。
 - `glb-validation.ts`：外来静态 GLB 的结构约束。
 - `surface-resources.ts`、`image-validation.ts`：地表图片装配、内容哈希、PNG 校验及资源预算。
