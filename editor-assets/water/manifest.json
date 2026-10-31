@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "source": "local-research-only",
+  "material": {
+    "color": 5275522,
+    "roughness": 0.3,
+    "metalness": 0,
+    "opacity": 0.84
+  },
+  "normal": {
+    "file": "water/ripple-normal.png",
+    "hash": "0a29dabba31157aff7efb0c739e06cf9a057e0e6f85699c0691039b29e3e6416",
+    "width": 512,
+    "height": 512
+  },
+  "mask": {
+    "file": "water/ripple-mask.png",
+    "hash": "3c158d98f1b620a1058863f5ea245e41518555cf86f50f1c53dd9dea117a19cb",
+    "width": 512,
+    "height": 512
+  }
+}

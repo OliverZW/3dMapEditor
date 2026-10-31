@@ -1,0 +1,21 @@
+{
+  "name": "原野草丛",
+  "assetId": "grass-reed",
+  "kind": "grass",
+  "builtin": "grass",
+  "units": "meters",
+  "sizeThreeMeters": [
+    0.8931408524513245,
+    1.0399999618530273,
+    0.8053503334522247
+  ],
+  "groundOffset": 0,
+  "triangles": 6,
+  "meshCount": 1,
+  "materials": [
+    "原型材质-0"
+  ],
+  "front": "+Z",
+  "generator": "dev-tools/export-prototype-models.mjs",
+  "source": "本工程自制程序原型转存 GLB · 可自由使用"
+}

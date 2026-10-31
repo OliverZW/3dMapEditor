@@ -1,0 +1,79 @@
+{
+  "name": "山地阔叶树",
+  "assetId": "tree-broad",
+  "units": "meters",
+  "boundsBlender": {
+    "min": [
+      -4.609399318695068,
+      -4.255188465118408,
+      0.0
+    ],
+    "max": [
+      4.968352794647217,
+      4.513995170593262,
+      7.9446868896484375
+    ]
+  },
+  "sizeThreeMeters": [
+    9.578,
+    7.945,
+    8.769
+  ],
+  "groundOffset": -0.0,
+  "triangles": 960,
+  "meshCount": 2,
+  "leafCount": 680,
+  "materials": [
+    "树木 · 灰褐树皮",
+    "树叶 · 深橄榄",
+    "树叶 · 山地绿",
+    "树叶 · 暖绿",
+    "树叶 · 新生梢"
+  ],
+  "front": "+Z",
+  "generator": "blender/build_tree.py",
+  "seed": 20261025,
+  "kind": "tree",
+  "builtin": "broad",
+  "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+  "decimation": {
+    "method": "Blender connected-component branch pruning + foliage thinning + COLLAPSE",
+    "pass": 3,
+    "targetTriangles": 960,
+    "sourceTriangles": 8854,
+    "triangles": 960,
+    "originalTriangles": 35418,
+    "cumulativeReduction": 0.9728951380653905,
+    "branches": {
+      "beforeTriangles": 1649,
+      "afterTriangles": 280,
+      "beforeComponents": 346,
+      "preDecimationComponents": 58,
+      "afterComponents": 58
+    },
+    "foliage": {
+      "beforeTriangles": 7205,
+      "afterTriangles": 680,
+      "beforeComponents": 7205,
+      "afterComponents": 680,
+      "leafScale": 3.0
+    }
+  },
+  "decimationHistory": [
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "ratio": 0.5,
+      "sourceTriangles": 35418,
+      "triangles": 17709
+    },
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "pass": 2,
+      "ratio": 0.5,
+      "sourceTriangles": 17709,
+      "triangles": 8854,
+      "originalTriangles": 35418,
+      "cumulativeReduction": 0.750014117115591
+    }
+  ]
+}

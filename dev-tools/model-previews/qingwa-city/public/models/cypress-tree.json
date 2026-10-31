@@ -1,0 +1,36 @@
+{
+  "name": "翠柏",
+  "assetId": "tree-cypress-01",
+  "units": "meters",
+  "boundsBlender": {
+    "min": [
+      -1.9037501811981201,
+      -1.8599704504013062,
+      0.0
+    ],
+    "max": [
+      2.0119340419769287,
+      1.8459407091140747,
+      9.226502418518066
+    ]
+  },
+  "sizeThreeMeters": [
+    3.916,
+    9.227,
+    3.706
+  ],
+  "groundOffset": -0.0,
+  "triangles": 51860,
+  "meshCount": 2,
+  "leafCount": 12440,
+  "materials": [
+    "树木 · 灰褐树皮",
+    "翠柏 · 深色",
+    "翠柏 · 主色",
+    "翠柏 · 暖色",
+    "翠柏 · 梢色"
+  ],
+  "front": "+Z",
+  "generator": "blender/build_tree_variants.py",
+  "seed": 3102
+}

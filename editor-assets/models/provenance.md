@@ -1,0 +1,10 @@
+# 内置模型来源
+
+- 青瓦城池：本工程 Blender `build_city.py` 自制；贴图由 `generate_textures.py` 自制。
+- 山地阔叶树：本工程 Blender `build_tree.py` 自制，树皮贴图由 `generate_tree_textures.py` 自制。
+- 山地松、翠柏、红枫、垂柳：本工程 Blender `build_tree_variants.py` 自制，复用自制树皮贴图；固定种子记录在各模型 JSON。
+- 山关要塞、原野草丛：`dev-tools/export-prototype-models.mjs` 将编辑器原自制程序几何转存为静态 GLB；没有引入外部模型或贴图。
+
+Blender 源文件、加工脚本及模型预览保留在 `dev-tools/model-previews/qingwa-city`，仅供制作与检查；应用只加载本目录 GLB。建筑形制参考记录见该制作工程的 `docs/credits.md`。参考截图、预览场景与其他游戏的模型、贴图未打入 GLB。
+
+- `lod/`：`dev-tools/prepare-model-lods.mjs` 从本目录原始模型离线派生，仅供编辑器中远景显示；树冠采用确定性空间聚类及叶片面积补偿，建筑和枝干使用 meshoptimizer 1.0.1（MIT）加工，材质及内嵌贴图来自同一自制原模型。源与派生哈希记录在 manifest.json，原 GLB 不改写。

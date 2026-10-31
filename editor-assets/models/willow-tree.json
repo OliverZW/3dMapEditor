@@ -1,0 +1,79 @@
+{
+  "name": "垂柳",
+  "assetId": "tree-willow",
+  "units": "meters",
+  "boundsBlender": {
+    "min": [
+      -3.520864248275757,
+      -3.8017983436584473,
+      -0.002937781158834696
+    ],
+    "max": [
+      3.4543662071228027,
+      3.1420469284057617,
+      6.955868244171143
+    ]
+  },
+  "sizeThreeMeters": [
+    6.975,
+    6.959,
+    6.944
+  ],
+  "groundOffset": 0.002937781158834696,
+  "triangles": 960,
+  "meshCount": 2,
+  "leafCount": 700,
+  "materials": [
+    "树木 · 灰褐树皮",
+    "垂柳 · 深色",
+    "垂柳 · 主色",
+    "垂柳 · 暖色",
+    "垂柳 · 梢色"
+  ],
+  "front": "+Z",
+  "generator": "blender/build_tree_variants.py",
+  "seed": 3104,
+  "kind": "tree",
+  "builtin": "willow",
+  "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+  "decimation": {
+    "method": "Blender connected-component branch pruning + foliage thinning + COLLAPSE",
+    "pass": 3,
+    "targetTriangles": 960,
+    "sourceTriangles": 10292,
+    "triangles": 960,
+    "originalTriangles": 41168,
+    "cumulativeReduction": 0.9766809172172561,
+    "branches": {
+      "beforeTriangles": 1222,
+      "afterTriangles": 260,
+      "beforeComponents": 155,
+      "preDecimationComponents": 30,
+      "afterComponents": 30
+    },
+    "foliage": {
+      "beforeTriangles": 9070,
+      "afterTriangles": 700,
+      "beforeComponents": 9070,
+      "afterComponents": 700,
+      "leafScale": 3.2
+    }
+  },
+  "decimationHistory": [
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "ratio": 0.5,
+      "sourceTriangles": 41168,
+      "triangles": 20584
+    },
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "pass": 2,
+      "ratio": 0.5,
+      "sourceTriangles": 20584,
+      "triangles": 10292,
+      "originalTriangles": 41168,
+      "cumulativeReduction": 0.75
+    }
+  ]
+}

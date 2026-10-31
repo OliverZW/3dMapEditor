@@ -1,0 +1,146 @@
+{
+  "pine-tree": {
+    "name": "山地松",
+    "assetId": "tree-pine-01",
+    "units": "meters",
+    "boundsBlender": {
+      "min": [
+        -3.394843816757202,
+        -3.5726773738861084,
+        0.0
+      ],
+      "max": [
+        3.918055534362793,
+        3.56575345993042,
+        9.687668800354004
+      ]
+    },
+    "sizeThreeMeters": [
+      7.313,
+      9.688,
+      7.138
+    ],
+    "groundOffset": -0.0,
+    "triangles": 38252,
+    "meshCount": 2,
+    "leafCount": 16870,
+    "materials": [
+      "树木 · 灰褐树皮",
+      "山地松 · 深色",
+      "山地松 · 主色",
+      "山地松 · 暖色",
+      "山地松 · 梢色"
+    ],
+    "front": "+Z",
+    "generator": "blender/build_tree_variants.py",
+    "seed": 3101
+  },
+  "cypress-tree": {
+    "name": "翠柏",
+    "assetId": "tree-cypress-01",
+    "units": "meters",
+    "boundsBlender": {
+      "min": [
+        -1.9037501811981201,
+        -1.8599704504013062,
+        0.0
+      ],
+      "max": [
+        2.0119340419769287,
+        1.8459407091140747,
+        9.226502418518066
+      ]
+    },
+    "sizeThreeMeters": [
+      3.916,
+      9.227,
+      3.706
+    ],
+    "groundOffset": -0.0,
+    "triangles": 51860,
+    "meshCount": 2,
+    "leafCount": 12440,
+    "materials": [
+      "树木 · 灰褐树皮",
+      "翠柏 · 深色",
+      "翠柏 · 主色",
+      "翠柏 · 暖色",
+      "翠柏 · 梢色"
+    ],
+    "front": "+Z",
+    "generator": "blender/build_tree_variants.py",
+    "seed": 3102
+  },
+  "maple-tree": {
+    "name": "红枫",
+    "assetId": "tree-maple-01",
+    "units": "meters",
+    "boundsBlender": {
+      "min": [
+        -3.795814037322998,
+        -4.543966293334961,
+        0.0
+      ],
+      "max": [
+        4.061929702758789,
+        3.6715304851531982,
+        6.209273338317871
+      ]
+    },
+    "sizeThreeMeters": [
+      7.858,
+      6.209,
+      8.215
+    ],
+    "groundOffset": -0.0,
+    "triangles": 51034,
+    "meshCount": 2,
+    "leafCount": 3385,
+    "materials": [
+      "树木 · 灰褐树皮",
+      "红枫 · 深色",
+      "红枫 · 主色",
+      "红枫 · 暖色",
+      "红枫 · 梢色"
+    ],
+    "front": "+Z",
+    "generator": "blender/build_tree_variants.py",
+    "seed": 3103
+  },
+  "willow-tree": {
+    "name": "垂柳",
+    "assetId": "tree-willow-01",
+    "units": "meters",
+    "boundsBlender": {
+      "min": [
+        -3.564129114151001,
+        -3.8409624099731445,
+        0.0
+      ],
+      "max": [
+        3.5408666133880615,
+        3.1637861728668213,
+        6.999292850494385
+      ]
+    },
+    "sizeThreeMeters": [
+      7.105,
+      6.999,
+      7.005
+    ],
+    "groundOffset": -0.0,
+    "triangles": 41168,
+    "meshCount": 2,
+    "leafCount": 9070,
+    "materials": [
+      "树木 · 灰褐树皮",
+      "垂柳 · 深色",
+      "垂柳 · 主色",
+      "垂柳 · 暖色",
+      "垂柳 · 梢色"
+    ],
+    "front": "+Z",
+    "generator": "blender/build_tree_variants.py",
+    "seed": 3104
+  }
+}

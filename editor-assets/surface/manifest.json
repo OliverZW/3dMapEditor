@@ -1,0 +1,102 @@
+{
+  "id": "sg8-local-research-v1",
+  "version": 1,
+  "source": "三国群英传8已提取资源 · 仅本机研究样板",
+  "layers": [
+    {
+      "id": "grass",
+      "name": "草地",
+      "meters": 16,
+      "color": {
+        "file": "surface/grass-color.png",
+        "hash": "7249aa0876301146e6957b6e1215a4fdb754e3c2d0c6a2b428740e114b1baf82",
+        "width": 1024,
+        "height": 1024
+      },
+      "normal": {
+        "file": "surface/grass-normal.png",
+        "hash": "f0d6c7b4766e6d9af5e44a72e03239c66d66aa39d9c60e674c3788f19761cd6c",
+        "width": 1024,
+        "height": 1024
+      },
+      "thumbnail": {
+        "file": "surface/grass-thumb.png",
+        "hash": "804cff6c4199716b6a066f7321b716d27d79c2ed7fe6470091c8472fb9ea0290",
+        "width": 128,
+        "height": 128
+      }
+    },
+    {
+      "id": "soil",
+      "name": "泥土",
+      "meters": 16,
+      "color": {
+        "file": "surface/soil-color.png",
+        "hash": "eae80e0435b1c84a96514c8e13e9aab5b7229ebf9a6a7c1e5eb9984abd31f5e9",
+        "width": 1024,
+        "height": 1024
+      },
+      "normal": {
+        "file": "surface/soil-normal.png",
+        "hash": "eaee8db64e02d9712ceda17a9be961e3cf3dc4a0738bed87152e5e72cc406a41",
+        "width": 1024,
+        "height": 1024
+      },
+      "thumbnail": {
+        "file": "surface/soil-thumb.png",
+        "hash": "6484acaec94901c36a226b9bf4d7c03325f7a32381efa90f20c4a98b3b3c790f",
+        "width": 128,
+        "height": 128
+      }
+    },
+    {
+      "id": "rock",
+      "name": "岩石",
+      "meters": 32,
+      "color": {
+        "file": "surface/rock-color.png",
+        "hash": "2ee5b6eecd3b4acf623d99a65bb6823d352d37008d6101ff059974c927ef50a6",
+        "width": 1024,
+        "height": 1024
+      },
+      "normal": {
+        "file": "surface/rock-normal.png",
+        "hash": "ceb0bbfcce5fe952c4f38d7609922fb5aac7ae570fcb4ce84f683b366c8ac6ca",
+        "width": 1024,
+        "height": 1024
+      },
+      "thumbnail": {
+        "file": "surface/rock-thumb.png",
+        "hash": "6916ba642d6a315d820e110744fa1a5d8fbbf83547bc915fb3a3a52f28fa667a",
+        "width": 128,
+        "height": 128
+      }
+    },
+    {
+      "id": "sand",
+      "name": "沙地",
+      "meters": 24,
+      "color": {
+        "file": "surface/sand-color.png",
+        "hash": "475742e863579939c66f49c4ce93f54187eb3862b1975f0261e4bc23da25dd90",
+        "width": 1024,
+        "height": 1024
+      },
+      "normal": {
+        "file": "surface/sand-normal.png",
+        "hash": "f71dfd425209b79fa650bee5a6312697745faa31b8b62c92cd6f1feb2c2d78f4",
+        "width": 1024,
+        "height": 1024
+      },
+      "thumbnail": {
+        "file": "surface/sand-thumb.png",
+        "hash": "6d96d810ab090110ecd82519a4ff894de468a6ed7ea5753a073d719655e96c67",
+        "width": 128,
+        "height": 128
+      }
+    }
+  ],
+  "scale": 1,
+  "detail": 0.25,
+  "slopeRock": true
+}

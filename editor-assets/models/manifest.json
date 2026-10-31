@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "city-jade",
+      "name": "青瓦城池",
+      "kind": "city",
+      "builtin": "city",
+      "file": "models/qingwa-city.glb",
+      "hash": "de6953772a4baf149648afe59f163c105a0c1e4525aeecb6fbc906450f1f2a77",
+      "size": [
+        52.008,
+        11.955,
+        46.975
+      ],
+      "triangles": 4421,
+      "materials": 11,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "de6953772a4baf149648afe59f163c105a0c1e4525aeecb6fbc906450f1f2a77",
+        "levels": [
+          {
+            "file": "models/lod/city-jade-1.glb",
+            "hash": "7f924d72918648ea31fbccbb43ff27f0f2778966600a320a4cfbb56448c9247b",
+            "triangles": 1353
+          },
+          {
+            "file": "models/lod/city-jade-2.glb",
+            "hash": "a6c2295ef719f27fb2a9f9b7a57121241170c29bac3b8394234dcdf758798c63",
+            "triangles": 975
+          }
+        ]
+      }
+    },
+    {
+      "id": "fort-stone",
+      "name": "山关要塞",
+      "kind": "fortress",
+      "builtin": "fortress",
+      "file": "models/stone-fortress.glb",
+      "hash": "aa9262b03e143f5155be8ed312a16c7b55ee1b3eeadb2bc7cda20683b6a8c4c4",
+      "size": [
+        34.223,
+        19.055,
+        32.01
+      ],
+      "triangles": 564,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0.5,
+      "source": "本工程自制程序原型转存 GLB · 可自由使用"
+    },
+    {
+      "id": "tree-pine",
+      "name": "山地松",
+      "kind": "tree",
+      "builtin": "pine",
+      "file": "models/pine-tree.glb",
+      "hash": "82442a136b42a88c7cbe7bef9871f7385ade778fe5c6042ce3bbb8e45d8f1fd6",
+      "size": [
+        7.023,
+        9.436,
+        7.147
+      ],
+      "triangles": 960,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "82442a136b42a88c7cbe7bef9871f7385ade778fe5c6042ce3bbb8e45d8f1fd6",
+        "levels": [
+          {
+            "file": "models/lod/tree-pine-1.glb",
+            "hash": "0a8fbc25f2023f98d8b622a9621b4598eb0ce4cb78c095a326b9e41a5afd9a41",
+            "triangles": 208
+          },
+          {
+            "file": "models/lod/tree-pine-2.glb",
+            "hash": "48430d634395cea50d546fc58d51baccb273c7d573d16555ebca7f8d0c042f0b",
+            "triangles": 99
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree-broad",
+      "name": "山地阔叶树",
+      "kind": "tree",
+      "builtin": "broad",
+      "file": "models/broadleaf-tree.glb",
+      "hash": "93ff01c483a39b151bcd83bbe4d7de0ef91f2c26d74e4b9b482489986c26e885",
+      "size": [
+        9.578,
+        7.945,
+        8.769
+      ],
+      "triangles": 960,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "93ff01c483a39b151bcd83bbe4d7de0ef91f2c26d74e4b9b482489986c26e885",
+        "levels": [
+          {
+            "file": "models/lod/tree-broad-1.glb",
+            "hash": "7db15754008f6c95678f197c6f6d7f302959974a1aeedbf0be6d00251efb96ca",
+            "triangles": 271
+          },
+          {
+            "file": "models/lod/tree-broad-2.glb",
+            "hash": "8372e52c7791fb2a0df767696b80d3526a72f36784e083bf1226ba7447b6f482",
+            "triangles": 166
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree-cypress",
+      "name": "翠柏",
+      "kind": "tree",
+      "builtin": "cypress",
+      "file": "models/cypress-tree.glb",
+      "hash": "cc591f45a4f40dbc07f32f6e87d2eadd3a13767389e041504ce79022f33da477",
+      "size": [
+        3.689,
+        9.29,
+        3.645
+      ],
+      "triangles": 960,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0.002900477033108473,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "cc591f45a4f40dbc07f32f6e87d2eadd3a13767389e041504ce79022f33da477",
+        "levels": [
+          {
+            "file": "models/lod/tree-cypress-1.glb",
+            "hash": "d1fa5c66ef274f466682c8af698bfcd81684f31ab19025233f09cfc51c96b0e4",
+            "triangles": 193
+          },
+          {
+            "file": "models/lod/tree-cypress-2.glb",
+            "hash": "3a00b41215ae60d6de9d2513ae1f42f39eca925595c422d789648fcf035b0f91",
+            "triangles": 77
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree-maple",
+      "name": "红枫",
+      "kind": "tree",
+      "builtin": "maple",
+      "file": "models/maple-tree.glb",
+      "hash": "47ce872bd81a6400acb5fef4db67015da9071baaa2000f575580a06c17956ec5",
+      "size": [
+        7.727,
+        6.17,
+        8.413
+      ],
+      "triangles": 960,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "47ce872bd81a6400acb5fef4db67015da9071baaa2000f575580a06c17956ec5",
+        "levels": [
+          {
+            "file": "models/lod/tree-maple-1.glb",
+            "hash": "3a62d114b44547a0bb955f320f09d5ba65885837af567ce179dc8c045c2c1673",
+            "triangles": 256
+          },
+          {
+            "file": "models/lod/tree-maple-2.glb",
+            "hash": "0768eefcbc446173cb9f74642c6d4ecb96008818bf7498d8a5f2a21fc3509626",
+            "triangles": 144
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree-willow",
+      "name": "垂柳",
+      "kind": "tree",
+      "builtin": "willow",
+      "file": "models/willow-tree.glb",
+      "hash": "2236e8dc3ff1f0c416e8acf5f93a9f2ad319ecc06494aac2d9e9c0490799d9c1",
+      "size": [
+        6.975,
+        6.959,
+        6.944
+      ],
+      "triangles": 960,
+      "materials": 5,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0.002937781158834696,
+      "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+      "lod": {
+        "sourceHash": "2236e8dc3ff1f0c416e8acf5f93a9f2ad319ecc06494aac2d9e9c0490799d9c1",
+        "levels": [
+          {
+            "file": "models/lod/tree-willow-1.glb",
+            "hash": "19b4b1cef5bd7350f82a8aec247726184424b3bf0d618eead6cf60337511d75d",
+            "triangles": 343
+          },
+          {
+            "file": "models/lod/tree-willow-2.glb",
+            "hash": "ab69b306d0323ed53a3f7db35b4685a4c59cf15713e1716f46344da89a95c4ae",
+            "triangles": 235
+          }
+        ]
+      }
+    },
+    {
+      "id": "grass-reed",
+      "name": "原野草丛",
+      "kind": "grass",
+      "builtin": "grass",
+      "file": "models/wild-grass.glb",
+      "hash": "c6ba4f1ca62edf6703435e4b273833204750fd3b737a1d7f47171ef60c1f01f6",
+      "size": [
+        0.8931408524513245,
+        1.0399999618530273,
+        0.8053503334522247
+      ],
+      "triangles": 6,
+      "materials": 1,
+      "scale": 1,
+      "yaw": 0,
+      "offset": 0,
+      "source": "本工程自制程序原型转存 GLB · 可自由使用"
+    }
+  ]
+}

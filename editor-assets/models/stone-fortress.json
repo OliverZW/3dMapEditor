@@ -1,0 +1,42 @@
+{
+  "name": "山关要塞",
+  "assetId": "fort-stone",
+  "kind": "fortress",
+  "builtin": "fortress",
+  "units": "meters",
+  "sizeThreeMeters": [
+    34.223,
+    19.055,
+    32.01
+  ],
+  "groundOffset": 0.5,
+  "triangles": 564,
+  "meshCount": 5,
+  "materials": [
+    "原型材质-0",
+    "原型材质-1",
+    "原型材质-2",
+    "原型材质-3",
+    "原型材质-4"
+  ],
+  "front": "+Z",
+  "generator": "dev-tools/export-prototype-models.mjs",
+  "source": "本工程自制程序原型转存 GLB · 可自由使用",
+  "boundsBlender": {
+    "min": [
+      -17.111270904541016,
+      -16.365827560424805,
+      -0.5
+    ],
+    "max": [
+      17.111270904541016,
+      15.64457893371582,
+      18.55500030517578
+    ]
+  },
+  "decimation": {
+    "method": "墙体 50% 折叠减面；屋顶、基座和门体保留",
+    "sourceTriangles": 912,
+    "triangles": 564
+  }
+}

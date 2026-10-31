@@ -1,0 +1,1750 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://map3d-editor.invalid/contracts/engine-export-v2.schema.json",
+  "title": "Map3D 通用引擎导出 v2 · 成功包字段契约",
+  "description": "地图数据与可替换参考资源的 v2 字段契约；实际字节、引用、预算由包级校验完成。引擎呈现由游戏项目负责。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "packageKind": {
+      "const": "map3d-engine-export"
+    },
+    "exportVersion": {
+      "const": 2
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "projectFormatVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "generatorVersion": {
+          "const": 1
+        }
+      },
+      "required": ["projectFormatVersion", "generatorVersion"]
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z0-9][a-z0-9.-]*$",
+          "not": {
+            "pattern": "\\s"
+          }
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "engine": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["id", "version", "engine"]
+    },
+    "algorithms": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "terrainSampling": {
+          "const": 1
+        },
+        "grassGenerator": {
+          "const": 1
+        },
+        "waterGeometry": {
+          "const": 1
+        },
+        "waterFlow": {
+          "const": 1
+        }
+      },
+      "required": ["terrainSampling", "grassGenerator", "waterGeometry", "waterFlow"]
+    },
+    "coordinates": {
+      "$ref": "#/definitions/coordinates"
+    },
+    "map": {
+      "$ref": "#/definitions/map"
+    },
+    "options": {
+      "$ref": "#/definitions/options"
+    },
+    "entries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "terrain": {
+          "$ref": "#/definitions/path"
+        },
+        "models": {
+          "$ref": "#/definitions/path"
+        },
+        "trees": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sites": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grass": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "water": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "logic": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["terrain", "models", "trees", "sites", "grass", "water", "logic"]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/file"
+      },
+      "minItems": 1,
+      "maxItems": 10000,
+      "uniqueItems": true
+    },
+    "requiredCapabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "continuous-terrain@1",
+          "surface-four-layer@1",
+          "static-model-pbr@1",
+          "grass-generator@1",
+          "river-water@1",
+          "grass-wind@1",
+          "hex-owners@1"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "allOf": [
+        {
+          "contains": {
+            "const": "continuous-terrain@1"
+          }
+        }
+      ]
+    },
+    "omissions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/omission"
+      },
+      "uniqueItems": true
+    },
+    "validation": {
+      "$ref": "#/definitions/validation"
+    }
+  },
+  "required": [
+    "packageKind",
+    "exportVersion",
+    "name",
+    "source",
+    "adapter",
+    "algorithms",
+    "coordinates",
+    "map",
+    "options",
+    "entries",
+    "files",
+    "requiredCapabilities",
+    "omissions",
+    "validation"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "trees": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "trees": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "trees": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "grass": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "grass": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "grass": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "water": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "water": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "water": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "sites": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "sites": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "sites": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "logic": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "logic": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "entries": {
+            "properties": {
+              "logic": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "options": {
+            "properties": {
+              "mode": {
+                "const": "production"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "omissions": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$",
+      "not": {
+        "pattern": "\\s"
+      }
+    },
+    "id": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "hex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "q": {
+          "type": "integer"
+        },
+        "r": {
+          "type": "integer"
+        }
+      },
+      "required": ["q", "r"]
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "originX": {
+          "type": "number"
+        },
+        "originZ": {
+          "type": "number"
+        }
+      },
+      "required": ["columns", "rows", "radius", "originX", "originZ"]
+    },
+    "coordinates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "handedness": {
+          "const": "right"
+        },
+        "up": {
+          "const": "Y"
+        },
+        "unit": {
+          "const": "meter"
+        },
+        "imageRight": {
+          "const": "+X"
+        },
+        "imageDown": {
+          "const": "+Z"
+        },
+        "origin": {
+          "const": "map-center"
+        },
+        "arrayOrder": {
+          "const": "row-major"
+        },
+        "angleUnit": {
+          "const": "radian"
+        }
+      },
+      "required": [
+        "handedness",
+        "up",
+        "unit",
+        "imageRight",
+        "imageDown",
+        "origin",
+        "arrayOrder",
+        "angleUnit"
+      ]
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "samplesX": {
+          "enum": [513, 1025]
+        },
+        "samplesZ": {
+          "enum": [513, 1025]
+        },
+        "minHeight": {
+          "type": "number"
+        },
+        "maxHeight": {
+          "type": "number"
+        },
+        "grid": {
+          "$ref": "#/definitions/grid"
+        }
+      },
+      "required": ["width", "depth", "samplesX", "samplesZ", "minHeight", "maxHeight", "grid"],
+      "oneOf": [
+        {
+          "properties": {
+            "samplesX": {
+              "const": 513
+            },
+            "samplesZ": {
+              "const": 513
+            }
+          }
+        },
+        {
+          "properties": {
+            "samplesX": {
+              "const": 1025
+            },
+            "samplesZ": {
+              "const": 1025
+            }
+          }
+        }
+      ]
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z0-9][a-z0-9.-]*$",
+          "not": {
+            "pattern": "\\s"
+          }
+        },
+        "mode": {
+          "enum": ["production", "preview"]
+        },
+        "trees": {
+          "type": "boolean"
+        },
+        "grass": {
+          "type": "boolean"
+        },
+        "water": {
+          "type": "boolean"
+        },
+        "sites": {
+          "type": "boolean"
+        },
+        "logic": {
+          "type": "boolean"
+        }
+      },
+      "required": ["target", "mode", "trees", "grass", "water", "sites", "logic"]
+    },
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "componentType": {
+          "enum": ["float32", "uint32", "uint8"]
+        },
+        "byteOrder": {
+          "enum": ["little", "none"]
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "elementCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["componentType", "byteOrder", "dimensions", "elementCount"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "componentType": {
+                "const": "uint8"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "byteOrder": {
+                "const": "none"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "byteOrder": {
+                "const": "little"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "bitDepth": {
+          "enum": [8, 16]
+        },
+        "channels": {
+          "enum": [1, 3, 4]
+        }
+      },
+      "required": ["width", "height", "bitDepth", "channels"]
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/path"
+        },
+        "purpose": {
+          "enum": ["data", "resource", "diagnostic", "tooling"]
+        },
+        "mediaType": {
+          "enum": [
+            "application/json",
+            "application/octet-stream",
+            "model/gltf-binary",
+            "image/png",
+            "text/plain",
+            "text/javascript",
+            "image/webp",
+            "image/jpeg"
+          ]
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 134217728
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "binary": {
+          "$ref": "#/definitions/binary"
+        },
+        "image": {
+          "$ref": "#/definitions/image"
+        }
+      },
+      "required": ["path", "purpose", "mediaType", "byteLength", "sha256"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mediaType": {
+                "const": "application/octet-stream"
+              }
+            }
+          },
+          "then": {
+            "required": ["binary"]
+          },
+          "else": {
+            "not": {
+              "required": ["binary"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mediaType": {
+                "enum": ["image/png", "image/webp", "image/jpeg"]
+              }
+            }
+          },
+          "then": {
+            "required": ["image"]
+          },
+          "else": {
+            "not": {
+              "required": ["image"]
+            }
+          }
+        }
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "const": "passed"
+        },
+        "import": {
+          "const": "not-run"
+        },
+        "engine": {
+          "const": "not-run"
+        }
+      },
+      "required": ["package", "import", "engine"]
+    },
+    "omission": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "enum": [
+            "continuous-terrain@1",
+            "surface-four-layer@1",
+            "static-model-pbr@1",
+            "grass-generator@1",
+            "river-water@1",
+            "grass-wind@1",
+            "hex-owners@1"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fallback": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["capability", "reason", "fallback"]
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[EWI]_[A-Z0-9_]+$"
+        },
+        "severity": {
+          "enum": ["info", "warning", "error"]
+        },
+        "stage": {
+          "enum": ["snapshot", "schema", "bytes", "references", "capabilities", "import", "engine"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objectId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capability": {
+          "anyOf": [
+            {
+              "enum": [
+                "continuous-terrain@1",
+                "surface-four-layer@1",
+                "static-model-pbr@1",
+                "grass-generator@1",
+                "river-water@1",
+                "grass-wind@1",
+                "hex-owners@1"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["code", "severity", "stage", "message", "path", "objectId", "capability"]
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["production", "preview"]
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/issue"
+          }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "files": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "models": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "trees": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sites": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "grassLayers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rivers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "logicCells": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": ["files", "models", "trees", "sites", "grassLayers", "rivers", "logicCells"]
+        },
+        "listedBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "validation": {
+          "$ref": "#/definitions/validation"
+        }
+      },
+      "required": ["mode", "issues", "counts", "listedBytes", "validation"]
+    },
+    "terrain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mesh": {
+          "$ref": "#/definitions/path"
+        },
+        "heights": {
+          "$ref": "#/definitions/path"
+        },
+        "surface": {
+          "$ref": "#/definitions/path"
+        },
+        "heightmap": {
+          "$ref": "#/definitions/path"
+        },
+        "heightMetadata": {
+          "$ref": "#/definitions/path"
+        },
+        "material": {
+          "$ref": "#/definitions/path"
+        }
+      },
+      "required": ["mesh", "heights", "surface", "heightmap", "heightMetadata", "material"]
+    },
+    "heightMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "samplesX": {
+          "enum": [513, 1025]
+        },
+        "samplesZ": {
+          "enum": [513, 1025]
+        },
+        "minHeight": {
+          "type": "number"
+        },
+        "maxHeight": {
+          "type": "number"
+        },
+        "origin": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "unit": {
+          "const": "meter"
+        },
+        "heightEncoding": {
+          "const": "grayscale16"
+        },
+        "imageRight": {
+          "const": "+X"
+        },
+        "imageDown": {
+          "const": "+Z"
+        },
+        "includesRiverbed": {
+          "const": true
+        }
+      },
+      "required": [
+        "width",
+        "depth",
+        "samplesX",
+        "samplesZ",
+        "minHeight",
+        "maxHeight",
+        "origin",
+        "unit",
+        "heightEncoding",
+        "imageRight",
+        "imageDown",
+        "includesRiverbed"
+      ]
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": ["city", "fortress", "tree", "grass"]
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "included": {
+          "type": "boolean"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "material": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["id", "name", "kind", "size", "source", "included", "path", "material"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "included": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "$ref": "#/definitions/path"
+              },
+              "material": {
+                "$ref": "#/definitions/path"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "path": {
+                "type": "null"
+              },
+              "material": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/model"
+      }
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "yaw": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": ["id", "assetId", "position", "yaw", "scale"]
+    },
+    "instances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/instance"
+      }
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "kind": {
+          "enum": ["city", "fortress"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "center": {
+          "$ref": "#/definitions/hex"
+        },
+        "factionId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["id", "kind", "name", "assetId", "center", "factionId"]
+    },
+    "faction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[a-fA-F0-9]{6}$"
+        }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "logic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/site"
+          }
+        },
+        "factions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/faction"
+          }
+        },
+        "owners": {
+          "$ref": "#/definitions/path"
+        }
+      },
+      "required": ["sites", "factions", "owners"]
+    },
+    "grassLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "density": {
+          "$ref": "#/definitions/path"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "generatorVersion": {
+          "const": 1
+        },
+        "minScale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxScale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxSlope": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "wind": {
+          "type": "number",
+          "minimum": 0
+        },
+        "modelTransform": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "yaw": {
+              "type": "number"
+            },
+            "scale": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "offset": {
+              "type": "number"
+            }
+          },
+          "required": ["yaw", "scale", "offset"]
+        }
+      },
+      "required": [
+        "id",
+        "assetId",
+        "density",
+        "seed",
+        "generatorVersion",
+        "minScale",
+        "maxScale",
+        "maxSlope",
+        "wind",
+        "modelTransform"
+      ]
+    },
+    "grass": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/grassLayer"
+          }
+        },
+        "exclusions": {
+          "$ref": "#/definitions/path"
+        }
+      },
+      "required": ["layers", "exclusions"]
+    },
+    "exclusions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "center": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "halfX": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "halfZ": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "yaw": {
+                "type": "number"
+              }
+            },
+            "required": ["center", "halfX", "halfZ", "yaw"]
+          }
+        },
+        "rivers": {
+          "$ref": "#/definitions/path"
+        }
+      },
+      "required": ["sites", "rivers"]
+    },
+    "river": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "required": ["x", "z"]
+          },
+          "minItems": 2
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "waterLevel": {
+          "type": "number"
+        },
+        "interpolation": {
+          "enum": ["catmull-rom", "linear"]
+        },
+        "clipped": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "points",
+        "width",
+        "depth",
+        "waterLevel",
+        "interpolation",
+        "clipped"
+      ]
+    },
+    "rivers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/river"
+      }
+    },
+    "waterPrimitive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nodeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "meshIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "primitiveIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "vertexCount": {
+          "type": "integer",
+          "minimum": 3
+        },
+        "depth": {
+          "$ref": "#/definitions/path"
+        },
+        "shore": {
+          "$ref": "#/definitions/path"
+        },
+        "flow": {
+          "$ref": "#/definitions/path"
+        }
+      },
+      "required": [
+        "nodeName",
+        "meshIndex",
+        "primitiveIndex",
+        "vertexCount",
+        "depth",
+        "shore",
+        "flow"
+      ]
+    },
+    "water": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rivers": {
+          "$ref": "#/definitions/path"
+        },
+        "mesh": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "material": {
+          "$ref": "#/definitions/path"
+        },
+        "primitives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/waterPrimitive"
+          }
+        }
+      },
+      "required": ["rivers", "mesh", "material", "primitives"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mesh": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "primitives": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "primitives": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "colorTexture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/path"
+        },
+        "colorSpace": {
+          "const": "srgb"
+        }
+      },
+      "required": ["path", "colorSpace"]
+    },
+    "dataTexture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/path"
+        },
+        "colorSpace": {
+          "const": "linear"
+        }
+      },
+      "required": ["path", "colorSpace"]
+    },
+    "surfaceLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": ["grass", "soil", "rock", "sand"]
+        },
+        "meters": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "$ref": "#/definitions/colorTexture"
+        },
+        "normal": {
+          "$ref": "#/definitions/dataTexture"
+        }
+      },
+      "required": ["id", "meters", "color", "normal"]
+    },
+    "surfaceMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "surface-four-layer"
+        },
+        "version": {
+          "const": 1
+        },
+        "layers": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "additionalItems": false,
+          "items": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/surfaceLayer"
+                },
+                {
+                  "properties": {
+                    "id": {
+                      "const": "grass"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/surfaceLayer"
+                },
+                {
+                  "properties": {
+                    "id": {
+                      "const": "soil"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/surfaceLayer"
+                },
+                {
+                  "properties": {
+                    "id": {
+                      "const": "rock"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/surfaceLayer"
+                },
+                {
+                  "properties": {
+                    "id": {
+                      "const": "sand"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 4
+        },
+        "detail": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "slopeRock": {
+          "type": "boolean"
+        },
+        "sampler": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "wrap": {
+              "const": "repeat"
+            },
+            "minFilter": {
+              "const": "linear-mipmap-linear"
+            },
+            "magFilter": {
+              "const": "linear"
+            },
+            "anisotropy": {
+              "const": 4
+            }
+          },
+          "required": ["wrap", "minFilter", "magFilter", "anisotropy"]
+        }
+      },
+      "required": ["kind", "version", "layers", "scale", "detail", "slopeRock", "sampler"]
+    },
+    "waterMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "river-water"
+        },
+        "version": {
+          "const": 1
+        },
+        "normal": {
+          "$ref": "#/definitions/dataTexture"
+        },
+        "mask": {
+          "$ref": "#/definitions/dataTexture"
+        },
+        "shallowColor": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "deepColor": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "skyColor": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "roughness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metalness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flowSpeed": {
+          "type": "number",
+          "minimum": 0
+        },
+        "phaseSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "kind",
+        "version",
+        "normal",
+        "mask",
+        "shallowColor",
+        "deepColor",
+        "skyColor",
+        "roughness",
+        "opacity",
+        "metalness",
+        "flowSpeed",
+        "phaseSeconds"
+      ]
+    },
+    "modelMaterials": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "reference-model-pbr"
+        },
+        "version": {
+          "const": 1
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "textures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "$ref": "#/definitions/path"
+              },
+              "sampler": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": ["path", "sampler"]
+          }
+        }
+      },
+      "required": ["kind", "version", "materials", "textures"]
+    }
+  }
+}

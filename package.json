@@ -1,0 +1,60 @@
+{
+  "name": "three-kingdoms-map-editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:browser": "node tests/browser-smoke.cjs",
+    "format": "prettier --write src tests dev-tools engine-adapters index.html package.json tsconfig.json vite.config.ts vitest.config.ts",
+    "format:check": "prettier --check src tests dev-tools engine-adapters index.html package.json tsconfig.json vite.config.ts vitest.config.ts",
+    "check:unused": "tsc -b && node dev-tools/check-unused.mjs",
+    "test:interaction": "node tests/interaction-smoke.cjs",
+    "test:navigation-resources": "node tests/navigation-resources-smoke.cjs",
+    "test:map-resize": "node tests/map-resize-smoke.cjs",
+    "test:ui-refresh": "node tests/ui-refresh-smoke.cjs",
+    "test:river": "node tests/river-smoke.cjs",
+    "test:surface": "node tests/surface-smoke.cjs",
+    "test:surface-performance": "node tests/surface-performance.cjs --full",
+    "prepare:surface": "python dev-tools/prepare-surface.py",
+    "prepare:water": "python dev-tools/prepare-water.py",
+    "test:water": "node tests/water-smoke.cjs",
+    "test:water-visibility": "node tests/water-visibility.cjs",
+    "record:water": "node tests/water-recording.cjs",
+    "prepare:asset-manifests": "node dev-tools/update-asset-manifests.mjs",
+    "prepare:prototype-models": "node dev-tools/export-prototype-models.mjs && node dev-tools/update-asset-manifests.mjs",
+    "test:builtin-resources": "node tests/builtin-resources-smoke.cjs && node tests/builtin-project-smoke.cjs",
+    "test:builtin-performance": "node tests/model-performance.cjs",
+    "prepare:model-lods": "node dev-tools/prepare-model-lods.mjs",
+    "test:model-lods": "node tests/model-lod-smoke.cjs && node tests/model-lod-review.cjs",
+    "test:render-optimization": "node tests/render-optimization.cjs",
+    "test:render-updates": "node tests/render-update-smoke.cjs",
+    "test:export-contract": "vitest run tests/engine-export-contract.test.mjs",
+    "test:engine-export": "vitest run tests/engine-export.test.mjs tests/engine-export-contract.test.mjs"
+  },
+  "dependencies": {
+    "fflate": "0.8.2",
+    "lucide-react": "0.468.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "three": "0.186.1",
+    "ajv": "8.17.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/three": "0.183.1",
+    "meshoptimizer": "1.0.1",
+    "playwright": "1.62.1",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "4.0.18"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "name": "山地松",
+  "assetId": "tree-pine",
+  "units": "meters",
+  "boundsBlender": {
+    "min": [
+      -3.460947036743164,
+      -3.5228888988494873,
+      0.0
+    ],
+    "max": [
+      3.5619757175445557,
+      3.624241828918457,
+      9.436470985412598
+    ]
+  },
+  "sizeThreeMeters": [
+    7.023,
+    9.436,
+    7.147
+  ],
+  "groundOffset": -0.0,
+  "triangles": 960,
+  "meshCount": 2,
+  "leafCount": 360,
+  "materials": [
+    "树木 · 灰褐树皮",
+    "山地松 · 深色",
+    "山地松 · 主色",
+    "山地松 · 暖色",
+    "山地松 · 梢色"
+  ],
+  "front": "+Z",
+  "generator": "blender/build_tree_variants.py",
+  "seed": 3101,
+  "kind": "tree",
+  "builtin": "pine",
+  "source": "本工程 Blender 自制模型与贴图 · 可自由使用",
+  "decimation": {
+    "method": "Blender connected-component branch pruning + foliage thinning + COLLAPSE",
+    "pass": 3,
+    "targetTriangles": 960,
+    "sourceTriangles": 9563,
+    "triangles": 960,
+    "originalTriangles": 38252,
+    "cumulativeReduction": 0.9749032730314755,
+    "branches": {
+      "beforeTriangles": 1128,
+      "afterTriangles": 240,
+      "beforeComponents": 249,
+      "preDecimationComponents": 65,
+      "afterComponents": 57
+    },
+    "foliage": {
+      "beforeTriangles": 8435,
+      "afterTriangles": 720,
+      "beforeComponents": 4218,
+      "afterComponents": 360,
+      "leafScale": 3.0
+    }
+  },
+  "decimationHistory": [
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "ratio": 0.5,
+      "sourceTriangles": 38252,
+      "triangles": 19126
+    },
+    {
+      "method": "Blender Decimate / COLLAPSE",
+      "pass": 2,
+      "ratio": 0.5,
+      "sourceTriangles": 19126,
+      "triangles": 9563,
+      "originalTriangles": 38252,
+      "cumulativeReduction": 0.75
+    }
+  ]
+}

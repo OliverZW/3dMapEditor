@@ -1,0 +1,8 @@
+{
+  "name": "map3d-v2-read-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ajv": "8.17.1"
+  }
+}

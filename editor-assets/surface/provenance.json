@@ -1,0 +1,120 @@
+{
+  "scope": "local-research-only",
+  "sources": [
+    {
+      "id": "grass",
+      "atlas": "atlas_layers_0_to_3__183.png",
+      "crop": [
+        0,
+        1024,
+        1024,
+        2048
+      ],
+      "sourceSha256": "fc916bb7ca2fd74e5928ad264096e5a8dca4bfdcdaac2895778ce5b5c8452a5f"
+    },
+    {
+      "id": "soil",
+      "atlas": "atlas_layers_0_to_3__183.png",
+      "crop": [
+        1024,
+        1024,
+        2048,
+        2048
+      ],
+      "sourceSha256": "fc916bb7ca2fd74e5928ad264096e5a8dca4bfdcdaac2895778ce5b5c8452a5f"
+    },
+    {
+      "id": "rock",
+      "atlas": "atlas_layers_4_to_7__204.png",
+      "crop": [
+        0,
+        0,
+        1024,
+        1024
+      ],
+      "sourceSha256": "4fe1e4477c7fcf8575bfec61c367462f7db9cc4a271f04639ead09c349d1af99"
+    },
+    {
+      "id": "sand",
+      "atlas": "atlas_layers_4_to_7__204.png",
+      "crop": [
+        1024,
+        1024,
+        2048,
+        2048
+      ],
+      "sourceSha256": "4fe1e4477c7fcf8575bfec61c367462f7db9cc4a271f04639ead09c349d1af99"
+    }
+  ],
+  "size": 1024,
+  "seamBandPixels": 32,
+  "saturation": 0.82,
+  "normal": "luminance approximation; gaussian=1; centralDifference=1.5; tangent+Y",
+  "files": {
+    "id": "sg8-local-research-v1",
+    "version": 1,
+    "source": "三国群英传8已提取资源 · 仅本机研究样板",
+    "layers": [
+      {
+        "id": "grass",
+        "name": "草地",
+        "meters": 16,
+        "color": {
+          "hash": "7249aa0876301146e6957b6e1215a4fdb754e3c2d0c6a2b428740e114b1baf82",
+          "width": 1024,
+          "height": 1024
+        },
+        "normal": {
+          "hash": "f0d6c7b4766e6d9af5e44a72e03239c66d66aa39d9c60e674c3788f19761cd6c",
+          "width": 1024,
+          "height": 1024
+        }
+      },
+      {
+        "id": "soil",
+        "name": "泥土",
+        "meters": 16,
+        "color": {
+          "hash": "eae80e0435b1c84a96514c8e13e9aab5b7229ebf9a6a7c1e5eb9984abd31f5e9",
+          "width": 1024,
+          "height": 1024
+        },
+        "normal": {
+          "hash": "eaee8db64e02d9712ceda17a9be961e3cf3dc4a0738bed87152e5e72cc406a41",
+          "width": 1024,
+          "height": 1024
+        }
+      },
+      {
+        "id": "rock",
+        "name": "岩石",
+        "meters": 32,
+        "color": {
+          "hash": "2ee5b6eecd3b4acf623d99a65bb6823d352d37008d6101ff059974c927ef50a6",
+          "width": 1024,
+          "height": 1024
+        },
+        "normal": {
+          "hash": "ceb0bbfcce5fe952c4f38d7609922fb5aac7ae570fcb4ce84f683b366c8ac6ca",
+          "width": 1024,
+          "height": 1024
+        }
+      },
+      {
+        "id": "sand",
+        "name": "沙地",
+        "meters": 24,
+        "color": {
+          "hash": "475742e863579939c66f49c4ce93f54187eb3862b1975f0261e4bc23da25dd90",
+          "width": 1024,
+          "height": 1024
+        },
+        "normal": {
+          "hash": "f71dfd425209b79fa650bee5a6312697745faa31b8b62c92cd6f1feb2c2d78f4",
+          "width": 1024,
+          "height": 1024
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "scope": "local-research-only",
+  "source": "map-objects/textures/T_Mobile_River__-801972329829235631.png",
+  "sourceSha256": "47593540bf2fee985243e9ff2dd22db1b21129be24ea25dac6e58e57678268c7",
+  "interpretation": "R chosen as scalar artistic noise, not a claim about original packed encoding",
+  "size": 512,
+  "seamBandPixels": 16,
+  "normal": {
+    "gaussianRadius": 3.0,
+    "centralDifferenceScale": 5.0,
+    "tangent": "+Y"
+  },
+  "mask": {
+    "offset": 0.25,
+    "range": 0.6
+  },
+  "materialReferences": [
+    "map_water_301",
+    "m_worldmap_river"
+  ],
+  "missingOriginalResources": [
+    "_WaterNormal",
+    "_Foam",
+    "original shader"
+  ],
+  "files": {
+    "ripple-normal.png": {
+      "sha256": "0a29dabba31157aff7efb0c739e06cf9a057e0e6f85699c0691039b29e3e6416",
+      "width": 512,
+      "height": 512,
+      "mode": "RGB"
+    },
+    "ripple-mask.png": {
+      "sha256": "3c158d98f1b620a1058863f5ea245e41518555cf86f50f1c53dd9dea117a19cb",
+      "width": 512,
+      "height": 512,
+      "mode": "L"
+    }
+  }
+}

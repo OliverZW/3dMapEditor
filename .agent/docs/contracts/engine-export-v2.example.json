@@ -1,0 +1,356 @@
+{
+  "note": "字段测试样例；哈希、字节数及独立子文档只演示结构，不构成可导入资源包。",
+  "manifest": {
+    "packageKind": "map3d-engine-export",
+    "exportVersion": 2,
+    "name": "字段样例：矩形最小地图",
+    "source": {
+      "projectFormatVersion": 3,
+      "generatorVersion": 1
+    },
+    "adapter": {
+      "id": "cocos-creator-3.8",
+      "version": "0.1.0",
+      "engine": "Cocos Creator 3.8 LTS"
+    },
+    "algorithms": {
+      "terrainSampling": 1,
+      "grassGenerator": 1,
+      "waterGeometry": 1,
+      "waterFlow": 1
+    },
+    "coordinates": {
+      "handedness": "right",
+      "up": "Y",
+      "unit": "meter",
+      "imageRight": "+X",
+      "imageDown": "+Z",
+      "origin": "map-center",
+      "arrayOrder": "row-major",
+      "angleUnit": "radian"
+    },
+    "map": {
+      "width": 2048,
+      "depth": 1024,
+      "samplesX": 513,
+      "samplesZ": 513,
+      "minHeight": 0,
+      "maxHeight": 256,
+      "grid": {
+        "columns": 128,
+        "rows": 96,
+        "radius": 10,
+        "originX": -1100,
+        "originZ": -700
+      }
+    },
+    "options": {
+      "target": "cocos-creator-3.8",
+      "mode": "preview",
+      "trees": false,
+      "grass": false,
+      "water": false,
+      "sites": false,
+      "logic": false
+    },
+    "entries": {
+      "terrain": "terrain/terrain.json",
+      "models": "models/index.json",
+      "trees": null,
+      "sites": null,
+      "grass": null,
+      "water": null,
+      "logic": null
+    },
+    "files": [
+      {
+        "path": "report.json",
+        "purpose": "diagnostic",
+        "mediaType": "application/json",
+        "byteLength": 512,
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "requiredCapabilities": ["continuous-terrain@1"],
+    "omissions": [],
+    "validation": {
+      "package": "passed",
+      "import": "not-run",
+      "engine": "not-run"
+    }
+  },
+  "documents": {
+    "terrain": {
+      "mesh": "terrain/terrain.glb",
+      "heights": "terrain/final.f32",
+      "surface": "terrain/surface.rgba",
+      "heightmap": "terrain/height16.png",
+      "heightMetadata": "terrain/height16.terrain.json",
+      "material": "materials/surface.json"
+    },
+    "heightMetadata": {
+      "width": 2048,
+      "depth": 1024,
+      "samplesX": 513,
+      "samplesZ": 513,
+      "minHeight": 0,
+      "maxHeight": 256,
+      "origin": [-1024, 0, -512],
+      "unit": "meter",
+      "heightEncoding": "grayscale16",
+      "imageRight": "+X",
+      "imageDown": "+Z",
+      "includesRiverbed": true
+    },
+    "models": [
+      {
+        "id": "city-example",
+        "name": "水平居中据点",
+        "kind": "city",
+        "size": [10, 12, 10],
+        "source": "self-made-fixture",
+        "included": true,
+        "path": "models/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.glb",
+        "material": "materials/models/example.json"
+      },
+      {
+        "id": "tree-example",
+        "name": "仅元数据示例",
+        "kind": "tree",
+        "size": [4, 10, 4],
+        "source": "self-made-fixture",
+        "included": false,
+        "path": null,
+        "material": null
+      }
+    ],
+    "instances": [
+      {
+        "id": 1,
+        "assetId": "city-example",
+        "position": [10, 32.5, 20],
+        "yaw": 0.7,
+        "scale": 1.2
+      }
+    ],
+    "logic": {
+      "sites": [
+        {
+          "id": 1,
+          "kind": "city",
+          "name": "据点",
+          "assetId": "city-example",
+          "center": {
+            "q": 2,
+            "r": 3
+          },
+          "factionId": 2
+        }
+      ],
+      "factions": [
+        {
+          "id": 2,
+          "name": "势力",
+          "color": "#809060"
+        }
+      ],
+      "owners": "logic/owners.u32"
+    },
+    "grass": {
+      "layers": [
+        {
+          "id": 3,
+          "assetId": "grass-example",
+          "density": "grass/3.f32",
+          "seed": 123,
+          "generatorVersion": 1,
+          "minScale": 0.8,
+          "maxScale": 1.2,
+          "maxSlope": 30,
+          "wind": 0,
+          "modelTransform": {
+            "yaw": 0.2,
+            "scale": 1.5,
+            "offset": 0.1
+          }
+        }
+      ],
+      "exclusions": "grass/exclusions.json"
+    },
+    "exclusions": {
+      "sites": [
+        {
+          "center": [10, 20],
+          "halfX": 8,
+          "halfZ": 8,
+          "yaw": 0.7
+        }
+      ],
+      "rivers": "water/rivers.json"
+    },
+    "rivers": [
+      {
+        "id": 4,
+        "name": "样例河流",
+        "points": [
+          {
+            "x": -100,
+            "z": 0
+          },
+          {
+            "x": 100,
+            "z": 0
+          }
+        ],
+        "width": 24,
+        "depth": 6,
+        "waterLevel": 32,
+        "interpolation": "linear",
+        "clipped": false
+      }
+    ],
+    "water": {
+      "rivers": "water/rivers.json",
+      "mesh": "water/water.glb",
+      "material": "materials/water.json",
+      "primitives": [
+        {
+          "nodeName": "River:4",
+          "meshIndex": 0,
+          "primitiveIndex": 0,
+          "vertexCount": 3,
+          "depth": "water/0-depth.f32",
+          "shore": "water/0-shore.f32",
+          "flow": "water/0-flow.f32"
+        }
+      ]
+    },
+    "surfaceMaterial": {
+      "kind": "surface-four-layer",
+      "version": 1,
+      "layers": [
+        {
+          "id": "grass",
+          "meters": 16,
+          "color": {
+            "path": "textures/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.png",
+            "colorSpace": "srgb"
+          },
+          "normal": {
+            "path": "textures/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
+            "colorSpace": "linear"
+          }
+        },
+        {
+          "id": "soil",
+          "meters": 16,
+          "color": {
+            "path": "textures/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.png",
+            "colorSpace": "srgb"
+          },
+          "normal": {
+            "path": "textures/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
+            "colorSpace": "linear"
+          }
+        },
+        {
+          "id": "rock",
+          "meters": 32,
+          "color": {
+            "path": "textures/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png",
+            "colorSpace": "srgb"
+          },
+          "normal": {
+            "path": "textures/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
+            "colorSpace": "linear"
+          }
+        },
+        {
+          "id": "sand",
+          "meters": 24,
+          "color": {
+            "path": "textures/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.png",
+            "colorSpace": "srgb"
+          },
+          "normal": {
+            "path": "textures/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
+            "colorSpace": "linear"
+          }
+        }
+      ],
+      "scale": 1,
+      "detail": 0.25,
+      "slopeRock": true,
+      "sampler": {
+        "wrap": "repeat",
+        "minFilter": "linear-mipmap-linear",
+        "magFilter": "linear",
+        "anisotropy": 4
+      }
+    },
+    "waterMaterial": {
+      "kind": "river-water",
+      "version": 1,
+      "normal": {
+        "path": "textures/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
+        "colorSpace": "linear"
+      },
+      "mask": {
+        "path": "textures/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.png",
+        "colorSpace": "linear"
+      },
+      "shallowColor": [0.13, 0.31, 0.26],
+      "deepColor": [0.03, 0.09, 0.13],
+      "skyColor": [0.45, 0.58, 0.6],
+      "roughness": 0.3,
+      "opacity": 0.84,
+      "metalness": 0,
+      "flowSpeed": 0.8,
+      "phaseSeconds": 12
+    },
+    "report": {
+      "mode": "preview",
+      "issues": [
+        {
+          "code": "W_PREVIEW_FALLBACK",
+          "severity": "warning",
+          "stage": "capabilities",
+          "message": "字段样例不代表引擎已适配",
+          "path": "materials/surface.json",
+          "objectId": null,
+          "capability": "surface-four-layer@1"
+        }
+      ],
+      "counts": {
+        "files": 1,
+        "models": 0,
+        "trees": 0,
+        "sites": 0,
+        "grassLayers": 0,
+        "rivers": 0,
+        "logicCells": 0
+      },
+      "listedBytes": 512,
+      "validation": {
+        "package": "passed",
+        "import": "not-run",
+        "engine": "not-run"
+      }
+    },
+    "modelMaterials": {
+      "kind": "reference-model-pbr",
+      "version": 1,
+      "materials": [
+        {
+          "name": "可替换参考材质",
+          "pbrMetallicRoughness": {
+            "baseColorFactor": [1, 1, 1, 1],
+            "roughnessFactor": 0.8,
+            "metallicFactor": 0
+          }
+        }
+      ],
+      "textures": []
+    }
+  }
+}
