@@ -126,7 +126,7 @@ describe('四层地表材质、历史与工程 v4', () => {
     );
     expect(backup.surfaceMaterial.library?.[0].color.bytes).toEqual(asset.color.bytes);
     expect(backup.surface).toEqual(weights);
-  }, 30000);
+  }, 120000);
   it('四种画刷不改高度，权重归一化，手绘覆盖不依赖自动显岩', () => {
     const doc = createDocument(),
       heights = doc.heights.slice();

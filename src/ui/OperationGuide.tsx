@@ -98,8 +98,8 @@ export function OperationGuide() {
         <h3>保存、恢复与导出</h3>
         <ul>
           <li>
-            “保存工程”或 Ctrl＋S 下载可继续编辑的 .map3d
-            文件；以后通过“打开工程”恢复。请确认浏览器下载完成。浏览器本地草稿用于异常恢复，仍需定期下载工程。
+            桌面版“保存工程”或 Ctrl＋S 保存当前工程目录；“导出备份”生成自包含 v4 .map3d
+            文件，“恢复备份”将其恢复到新目录。浏览器开发入口仍通过下载和打开备份操作。
           </li>
           <li>
             高度图导出为 16 位 PNG 与参数
@@ -118,7 +118,7 @@ export function OperationGuide() {
             <dt>
               <kbd>Ctrl＋S</kbd>
             </dt>
-            <dd>下载工程</dd>
+            <dd>保存工程</dd>
           </div>
           <div>
             <dt>

@@ -4,6 +4,7 @@ import { createDemo } from '../core/demo';
 import { snapshot } from '../core/history';
 import { ProjectRepository } from '../io/project-storage';
 import type { ProjectEntry } from '../io/project-storage';
+import { decodeProject } from '../io/project';
 import { DesktopProjectStorage } from '../platform/desktop-project-storage';
 import type { DesktopBridge, DesktopProjectHandle } from '../platform/desktop-contract';
 
@@ -90,6 +91,36 @@ export class DesktopProjectSession {
         this.session.message(`工程已创建：${handle.directory}`);
       } catch (error) {
         this.session.message(`工程已创建，近期记录更新失败：${String(error)}`, true);
+      }
+      return true;
+    } catch (error) {
+      await this.bridge.releaseProject(handle.token);
+      throw error;
+    }
+  }
+  async restore(bytes: Uint8Array): Promise<boolean> {
+    const version = this.session.documentVersion,
+      revision = this.session.revision;
+    const doc = decodeProject(bytes);
+    const handle = await this.bridge.selectProject('create');
+    if (!handle) return false;
+    try {
+      const repository = this.repository(handle);
+      const result = await repository.create(doc, revision);
+      if (version !== this.session.documentVersion || revision !== this.session.revision)
+        throw new Error('恢复期间地图已改变，请重新打开已恢复的工程');
+      this.session.replace(result.document, true);
+      const previous = this.current;
+      this.current = { handle, repository, entry: result.entry };
+      if (previous)
+        await this.bridge
+          .releaseProject(previous.handle.token)
+          .catch((error) => console.warn('旧工程授权释放失败', error));
+      try {
+        await this.bridge.rememberProject(handle.token);
+        this.session.message(`备份已恢复：${handle.directory}`);
+      } catch (error) {
+        this.session.message(`备份已恢复，近期记录更新失败：${String(error)}`, true);
       }
       return true;
     } catch (error) {

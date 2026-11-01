@@ -4,9 +4,9 @@
 
 ## 当前状态
 
-- 本机生产版可通过 `dist/start-editor.bat` 启动；版本更新记录位于 `dist/RELEASE_NOTES.txt`，构建与验证见[实施记录](implementation.md)。
+- Windows x64 MSI 构建位于 `dist/windows/`，当前素材仅允许本机研究；构建与验证见[实施记录](implementation.md)。
 - 浏览器编辑器支持地形、地表、模型、树草、河流、据点、辖区、势力、撤销和工程保存；运行方法、实际验证及剩余差距见[实施记录](implementation.md)。
-- 当前源码已提供 v4 自包含备份及 `.map3dproj` 目录存储接口，不兼容旧包；已增加 Electron 开发入口、首页、自定义模型及地表材质导入，MSI 待后续步骤，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
+- 当前源码已提供 v4 自包含备份、`.map3dproj` 目录工程、Electron 首页、自定义模型和地表材质，以及 Windows MSI 构建；不兼容旧包，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
 - 运行导出采用引擎数据协议 v2，游戏负责读取与呈现；真实 Cocos Creator 导入、材质和运行性能尚未验收。详见[导出协议](engine-export-spec.md)与[Cocos 适配](cocos-export.md)。
 - 完整地图性能和成品美术质量尚未验收；测试数据与限制见[实施记录](implementation.md)和[渲染优化](render-optimization.md)。
 
@@ -18,7 +18,7 @@
 | 开发约束 | [架构规则](../rules/architecture.md)、[代码规范](../rules/code-style.md)、[整体风格](../rules/visual-style.md)、[Git 提交规则](../rules/git-workflow.md)：长期适用的约束。 |
 | 功能目标 | [需求与验收](requirements.md)：已确认需求、参数与验收场景，待实现目标明确标注。 |
 | 新版本计划 | [分步实施计划](new-version-plan.md)：七个固定步骤及依赖、交付物和验收条件；实际完成范围见实施记录。 |
-| 桌面开发 | [Windows 桌面开发](desktop-development.md)：Electron 开发启动、原生工程操作、进程边界和验证命令；不包含 MSI。 |
+| 桌面开发 | [Windows 桌面开发](desktop-development.md)：Electron 启动、原生工程操作、进程边界和 MSI 构建验证。 |
 | 实现设计 | [技术设计](technical-design.md)：模块、数据、算法及资源生命周期。 |
 | 操作设计 | [界面与操作](interaction.md)：布局、流程、输入与反馈。 |
 | 实际状态 | [当前实现与验证](implementation.md)：能力、测试条件、结论与差距；[渲染优化](render-optimization.md)保存独立性能矩阵及候选取舍。 |

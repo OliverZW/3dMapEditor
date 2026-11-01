@@ -223,6 +223,7 @@ export function App({
     [heightMin, setHeightMin] = useState(0),
     [heightMax, setHeightMax] = useState(256),
     [flipZ, setFlipZ] = useState(false);
+  const guardCancel = useRef<(() => void) | null>(null);
   const [exportOptions, setExportOptions] = useState({
       trees: true,
       grass: true,
@@ -329,13 +330,104 @@ export function App({
       }
     }
   }
+  async function backup() {
+    const bridge = window.mapEditorDesktop;
+    if (!bridge || session.busy) return;
+    try {
+      if (
+        session.riverPreview ||
+        session.sitePlacement ||
+        session.movingSite ||
+        session.resizePreview
+      )
+        throw new Error('请先确认或取消当前预览');
+      session.endStroke();
+      session.commitSurface();
+      session.busy = true;
+      session.notify();
+      if (await bridge.saveBackup(session.doc.name, encodeProject(session.doc)))
+        session.message('自包含备份已保存');
+    } catch (error) {
+      report(error);
+    } finally {
+      session.busy = false;
+      session.notify();
+    }
+  }
+  async function restore() {
+    const bridge = window.mapEditorDesktop;
+    if (!bridge || !desktop || session.busy) return;
+    try {
+      session.busy = true;
+      session.notify();
+      const bytes = await bridge.selectBackup();
+      if (bytes && (await desktop.restore(bytes))) viewport.current?.frameMap();
+    } catch (error) {
+      report(error);
+    } finally {
+      session.busy = false;
+      session.notify();
+    }
+  }
   function cancelGuard() {
     if (session.busy) return;
     setGuard(null);
+    guardCancel.current?.();
+    guardCancel.current = null;
     const id = closeRequest.current;
     closeRequest.current = null;
     if (id) void window.mapEditorDesktop?.finishClose(id, false).catch(report);
   }
+  useEffect(() => {
+    const bridge = window.mapEditorDesktop;
+    if (!desktop || !bridge) return;
+    return bridge.onOpenProject((handle) => {
+      if (
+        session.busy ||
+        guard ||
+        guardCancel.current ||
+        modal ||
+        heightImport ||
+        importDraft ||
+        importFailure ||
+        session.riverPreview ||
+        session.resizePreview ||
+        session.sitePlacement ||
+        session.movingSite
+      ) {
+        void bridge.releaseProject(handle.token);
+        session.message('请先完成当前操作，再打开工程', true);
+        return;
+      }
+      const openExternal = () => {
+        session.busy = true;
+        session.notify();
+        void desktop
+          .open(handle)
+          .then((opened) => {
+            if (opened) viewport.current?.frameMap();
+          })
+          .catch(report)
+          .finally(() => {
+            session.busy = false;
+            session.notify();
+          });
+      };
+      if (session.dirty) {
+        guardCancel.current = () => {
+          void bridge.releaseProject(handle.token);
+        };
+        setGuard(() => openExternal);
+      } else openExternal();
+    });
+  });
+  useEffect(
+    () => () => {
+      guardCancel.current?.();
+      guardCancel.current = null;
+    },
+    [],
+  );
   useEffect(() => {
     const bridge = window.mapEditorDesktop;
     if (!bridge) return;
@@ -604,7 +696,7 @@ export function App({
           <small>{desktop ? '.map3dproj' : '.map3d'}</small>
         </div>
         <div className="header-right">
-          <span className="version-tag">本地工程 · 0.1</span>
+          <span className="version-tag">本地工程 · 0.2</span>
           <Button icon={Info} onClick={() => setModal('help')}>
             操作指南
           </Button>
@@ -625,6 +717,16 @@ export function App({
           <Button icon={Save} onClick={() => void save()} title="Ctrl + S" disabled={session.busy}>
             保存工程
           </Button>
+          {desktop && (
+            <Button onClick={() => void backup()} disabled={session.busy}>
+              导出备份
+            </Button>
+          )}
+          {desktop && (
+            <Button onClick={() => uiAction(() => void restore())} disabled={session.busy}>
+              恢复备份
+            </Button>
+          )}
         </div>
         <div className="toolbar-group">
           <Button
@@ -1183,6 +1285,7 @@ export function App({
               onClick={() => {
                 const fn = guard;
                 setGuard(null);
+                guardCancel.current = null;
                 fn();
               }}
             >
@@ -1196,6 +1299,7 @@ export function App({
                   if (ok) {
                     const fn = guard;
                     setGuard(null);
+                    guardCancel.current = null;
                     fn();
                   }
                 });

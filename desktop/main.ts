@@ -1,5 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
@@ -7,15 +8,22 @@ import type { RecentProject } from '../src/platform/desktop-contract';
 import { NativeProjectStorage } from './native-project-storage';
 import { CloseController } from './close-controller';
 
-const location = new URL(process.env.MAP_EDITOR_DEV_URL ?? 'http://127.0.0.1:5173/');
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'shanhe', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+const production = app.isPackaged;
+const location = new URL(
+  production ? 'shanhe://editor/' : (process.env.MAP_EDITOR_DEV_URL ?? 'http://127.0.0.1:5173/'),
+);
 if (
-  location.protocol !== 'http:' ||
-  location.hostname !== '127.0.0.1' ||
-  location.pathname !== '/' ||
-  location.username ||
-  location.password ||
-  location.search ||
-  location.hash
+  !production &&
+  (location.protocol !== 'http:' ||
+    location.hostname !== '127.0.0.1' ||
+    location.pathname !== '/' ||
+    location.username ||
+    location.password ||
+    location.search ||
+    location.hash)
 )
   throw new Error('桌面开发入口只允许本机 Vite 服务');
 const trustedUrl = location.href;
@@ -68,6 +76,36 @@ async function writeRecent(items: RecentProject[]) {
 }
 let window: BrowserWindow;
 let rendererReady = false;
+let pageReady = false;
+let pendingProject: string | undefined;
+function queueProject(args: string[]) {
+  const candidate = args.find(
+    (arg) => path.isAbsolute(arg) && path.basename(arg).toLowerCase() === 'project.map3dproj',
+  );
+  if (!candidate) return;
+  pendingProject = path.resolve(candidate);
+  if (pageReady) deliverProject();
+}
+function deliverProject() {
+  if (!pendingProject || !window || window.isDestroyed()) return;
+  const directory = path.dirname(pendingProject);
+  pendingProject = undefined;
+  const token = randomUUID();
+  capabilities.set(token, new NativeProjectStorage(directory));
+  window.webContents.send('project:open-external', { token, directory });
+}
+const ownsInstance = app.requestSingleInstanceLock();
+if (!ownsInstance) app.quit();
+else {
+  queueProject(process.argv);
+  app.on('second-instance', (_event, args) => {
+    queueProject(args);
+    if (window) {
+      if (window.isMinimized()) window.restore();
+      window.focus();
+    }
+  });
+}
 const closeController = new CloseController();
 function verify(event: Electron.IpcMainInvokeEvent) {
   if (
@@ -106,6 +144,42 @@ function handle(channel: string, operation: (...args: unknown[]) => unknown) {
   });
 }
 function installHandlers() {
+  handle('backup:save', async (name, data) => {
+    const filename = text(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+    const value = bytes(data, 256 * 1024 * 1024);
+    const selected = await dialog.showSaveDialog(window, {
+      title: '保存自包含备份',
+      defaultPath: path.join(app.getPath('documents'), `${filename}.map3d`),
+      filters: [{ name: '地图备份', extensions: ['map3d'] }],
+    });
+    if (selected.canceled || !selected.filePath) return false;
+    const target = path.resolve(selected.filePath);
+    const temporary = path.join(path.dirname(target), `.shanhe-${randomUUID()}.tmp`);
+    try {
+      await fs.writeFile(temporary, value, { flag: 'wx' });
+      await fs.rename(temporary, target);
+    } finally {
+      await fs.unlink(temporary).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') console.warn('备份临时文件清理失败', error);
+      });
+    }
+    return true;
+  });
+  handle('backup:select', async () => {
+    const selected = await dialog.showOpenDialog(window, {
+      title: '选择 v4 备份',
+      properties: ['openFile'],
+      filters: [{ name: '地图备份', extensions: ['map3d'] }],
+    });
+    if (selected.canceled || !selected.filePaths.length) return null;
+    const file = selected.filePaths[0];
+    const info = await fs.stat(file);
+    if (!info.isFile() || info.size > 256 * 1024 * 1024)
+      throw new Error('备份文件无效或超过 256 MiB');
+    const data = await fs.readFile(file);
+    if (data.length > 256 * 1024 * 1024) throw new Error('备份文件超过 256 MiB');
+    return new Uint8Array(data);
+  });
   handle('project:select-parent', async () => {
     const result = await dialog.showOpenDialog(window, {
       title: '选择工程父目录',
@@ -240,61 +314,90 @@ function installHandlers() {
   });
 }
 
-void app
-  .whenReady()
-  .then(async () => {
-    Menu.setApplicationMenu(null);
-    window = new BrowserWindow({
-      width: 1600,
-      height: 1000,
-      minWidth: 1280,
-      minHeight: 720,
-      show: false,
-      title: '山河地图编辑器',
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,
-        webSecurity: true,
-        webviewTag: false,
-      },
-    });
-    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    window.webContents.on('will-navigate', (event, url) => {
-      // Vite 首次依赖预热可能重载；编辑器就绪后不允许导航绕过关闭保护。
-      if (rendererReady || url !== trustedUrl) event.preventDefault();
-    });
-    window.webContents.on('will-redirect', (event) => event.preventDefault());
-    window.webContents.on('before-input-event', (event, input) => {
-      if (input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r'))
-        event.preventDefault();
-    });
-    const session = window.webContents.session;
-    session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
-    session.setPermissionCheckHandler(() => false);
-    session.webRequest.onHeadersReceived((details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: ws://127.0.0.1:*; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'",
-          ],
+if (ownsInstance)
+  void app
+    .whenReady()
+    .then(async () => {
+      if (production) {
+        const root = path.join(app.getAppPath(), 'renderer');
+        protocol.handle('shanhe', (request) => {
+          const url = new URL(request.url);
+          if (url.hostname !== 'editor' || url.search || url.hash)
+            return new Response('Not found', { status: 404 });
+          let pathname: string;
+          try {
+            pathname = decodeURIComponent(url.pathname);
+          } catch {
+            return new Response('Bad path', { status: 400 });
+          }
+          if (pathname.includes('\\') || pathname.split('/').includes('..'))
+            return new Response('Bad path', { status: 400 });
+          const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
+          const relative = path.relative(root, file);
+          if (!relative || relative.startsWith('..') || path.isAbsolute(relative))
+            return new Response('Bad path', { status: 400 });
+          return net.fetch(pathToFileURL(file).toString());
+        });
+      }
+      Menu.setApplicationMenu(null);
+      window = new BrowserWindow({
+        width: 1600,
+        height: 1000,
+        minWidth: 1280,
+        minHeight: 720,
+        show: false,
+        title: '山河地图编辑器',
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true,
+          webSecurity: true,
+          webviewTag: false,
         },
       });
+      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+      window.webContents.on('will-navigate', (event, url) => {
+        // Vite 首次依赖预热可能重载；编辑器就绪后不允许导航绕过关闭保护。
+        if (rendererReady || url !== trustedUrl) event.preventDefault();
+      });
+      window.webContents.on('will-redirect', (event) => event.preventDefault());
+      window.webContents.on('did-finish-load', () => {
+        pageReady = true;
+        deliverProject();
+      });
+      window.webContents.on('before-input-event', (event, input) => {
+        if (
+          input.key === 'F5' ||
+          ((input.control || input.meta) && input.key.toLowerCase() === 'r')
+        )
+          event.preventDefault();
+      });
+      const session = window.webContents.session;
+      session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
+      session.setPermissionCheckHandler(() => false);
+      session.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+          responseHeaders: {
+            ...details.responseHeaders,
+            'Content-Security-Policy': [
+              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: ws://127.0.0.1:*; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'",
+            ],
+          },
+        });
+      });
+      installHandlers();
+      window.on('close', (event) => {
+        if (!rendererReady || closeController.consumeApproval()) return;
+        event.preventDefault();
+        closeController.request((id) => window.webContents.send('editor:close-request', id));
+      });
+      window.on('closed', () => capabilities.clear());
+      window.once('ready-to-show', () => window.show());
+      await window.loadURL(trustedUrl);
+    })
+    .catch((error: unknown) => {
+      dialog.showErrorBox('桌面启动失败', String(error));
+      app.quit();
     });
-    installHandlers();
-    window.on('close', (event) => {
-      if (!rendererReady || closeController.consumeApproval()) return;
-      event.preventDefault();
-      closeController.request((id) => window.webContents.send('editor:close-request', id));
-    });
-    window.on('closed', () => capabilities.clear());
-    window.once('ready-to-show', () => window.show());
-    await window.loadURL(trustedUrl);
-  })
-  .catch((error: unknown) => {
-    dialog.showErrorBox('桌面启动失败', String(error));
-    app.quit();
-  });
 app.on('window-all-closed', () => app.quit());

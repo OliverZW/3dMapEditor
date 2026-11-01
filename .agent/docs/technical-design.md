@@ -28,7 +28,7 @@ tests/              核心、浏览器及导出样例验证
 
 ### 静态资源、引擎适配与开发工具
 
-- `editor-assets/` 是编辑器内置共享资源目录；`vite.config.ts` 的 `publicDir` 指向它，开发服务直接提供其中内容，构建时复制到 `dist/` 根目录。浏览器仍通过 `/surface/*.png`、`/favicon.svg` 访问（部署子路径时使用既有 base），不会多出 `/editor-assets/` URL 前缀；地图保存仍内嵌图片。
+- `editor-assets/` 是编辑器内置共享资源目录；`vite.config.ts` 的 `publicDir` 指向它，开发服务直接提供其中内容，桌面构建时复制至安装包内部的渲染资源目录。打包应用通过受限 `shanhe://editor/` 协议提供资源，不需要运行本地 Web 服务；地图备份内嵌图片。
 - `engine-adapters/cocos/` 保存数据包接入说明和独立 Node.js 读取示例；运行导出器与包校验位于 `src/io/`，通用包格式由导出协议维护。
 - `dev-tools/` 只在开发和资源维护时调用：`check-unused.mjs` 审计源码引用，`prepare-surface.py` 将只读研究图集加工到 `editor-assets/surface/` 并更新素材描述。入口为 `npm run check:unused`、`npm run prepare:surface`；测试直接读取内置资源，不保存图片编码副本。
 

@@ -1,8 +1,24 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopBridge } from '../src/platform/desktop-contract';
+import type { DesktopBridge, DesktopProjectHandle } from '../src/platform/desktop-contract';
 
 let closeCallback: ((id: string) => void) | undefined;
 let pendingClose: string | undefined;
+let projectCallback: ((handle: DesktopProjectHandle) => void) | undefined;
+const pendingProjects: DesktopProjectHandle[] = [];
+ipcRenderer.on('project:open-external', (_event, handle: unknown) => {
+  if (
+    !handle ||
+    typeof handle !== 'object' ||
+    !('token' in handle) ||
+    !('directory' in handle) ||
+    typeof handle.token !== 'string' ||
+    typeof handle.directory !== 'string'
+  )
+    return;
+  const value = { token: handle.token, directory: handle.directory };
+  if (projectCallback) projectCallback(value);
+  else pendingProjects.push(value);
+});
 ipcRenderer.on('editor:close-request', (_event, id: unknown) => {
   if (typeof id !== 'string') return;
   if (closeCallback) closeCallback(id);
@@ -37,5 +53,14 @@ const bridge: DesktopBridge = {
     };
   },
   finishClose: (id, allow) => ipcRenderer.invoke('editor:finish-close', id, allow),
+  onOpenProject: (callback) => {
+    projectCallback = callback;
+    while (pendingProjects.length) callback(pendingProjects.shift()!);
+    return () => {
+      if (projectCallback === callback) projectCallback = undefined;
+    };
+  },
+  saveBackup: (name, bytes) => ipcRenderer.invoke('backup:save', name, bytes),
+  selectBackup: () => ipcRenderer.invoke('backup:select'),
 };
 contextBridge.exposeInMainWorld('mapEditorDesktop', bridge);

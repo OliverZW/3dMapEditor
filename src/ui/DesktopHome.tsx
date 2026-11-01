@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorSession } from '../application/editor-session';
 import { createDocument } from '../core/document';
 import { DesktopProjectSession } from '../application/desktop-project-session';
@@ -26,6 +26,7 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
   const [recent, setRecent] = useState<RecentProject[]>([]),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const runLock = useRef(false);
   const refresh = async () => {
     try {
       setRecent(await bridge.recentList());
@@ -50,7 +51,8 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
     [parent, bridge],
   );
   const run = async (operation: () => Promise<boolean>) => {
-    if (busy) return;
+    if (runLock.current) return;
+    runLock.current = true;
     setBusy(true);
     setError('');
     try {
@@ -62,9 +64,21 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      runLock.current = false;
       setBusy(false);
     }
   };
+  useEffect(() => {
+    if (editing) return;
+    return bridge.onOpenProject((handle) => {
+      if (busy || runLock.current) {
+        void bridge.releaseProject(handle.token);
+        setError('请先完成当前操作，再打开工程');
+        return;
+      }
+      void run(() => desktop.open(handle));
+    });
+  }, [editing, busy, bridge, desktop]);
   if (editing)
     return (
       <App
@@ -181,6 +195,17 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
               </Button>
               <Button disabled={busy} onClick={() => void run(() => desktop.open())}>
                 打开工程
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const backup = await bridge.selectBackup();
+                    return backup ? desktop.restore(backup) : false;
+                  })
+                }
+              >
+                恢复备份
               </Button>
               {hasProject && (
                 <Button disabled={busy} onClick={() => setEditing(true)}>

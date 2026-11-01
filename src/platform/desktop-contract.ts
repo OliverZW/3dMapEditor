@@ -31,6 +31,9 @@ export interface DesktopBridge {
   removeFile(token: string, path: string): Promise<void>;
   onCloseRequest(callback: (requestId: string) => void): () => void;
   finishClose(requestId: string, allow: boolean): Promise<void>;
+  onOpenProject(callback: (handle: DesktopProjectHandle) => void): () => void;
+  saveBackup(name: string, bytes: Uint8Array): Promise<boolean>;
+  selectBackup(): Promise<Uint8Array | null>;
 }
 declare global {
   interface Window {
