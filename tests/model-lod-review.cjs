@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { launch } = require('./surface-fixture.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -145,14 +146,20 @@ const assert = require('node:assert/strict');
         renderer.dispose();
         return report;
       }, view);
-      fs.writeFileSync(`test-results/model-lod-${view}.json`, JSON.stringify(report, null, 2));
+      fs.writeFileSync(
+        `test-results/tests/model-lod-${view}.json`,
+        JSON.stringify(report, null, 2),
+      );
       if (view !== 'enlarged')
         assert(
           report.filter((r) => r.level === 0).every((r) => r.maxDifference === 0),
           '近景固定画面必须一致',
         );
-      await page.screenshot({ path: `test-results/model-lod-${view}.png` });
-      fs.writeFileSync(`test-results/model-lod-${view}.json`, JSON.stringify(report, null, 2));
+      await page.screenshot({ path: `test-results/tests/model-lod-${view}.png` });
+      fs.writeFileSync(
+        `test-results/tests/model-lod-${view}.json`,
+        JSON.stringify(report, null, 2),
+      );
       await page.close();
       console.log(view, '完成；近景固定画面差异为0');
     }

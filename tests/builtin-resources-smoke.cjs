@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { launch } = require('./surface-fixture.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -98,9 +99,11 @@ const assert = require('node:assert/strict');
     });
     assert.equal(results.length, 8);
     assert.deepEqual(errors, []);
-    await page.screenshot({ path: path.resolve('test-results/builtin-models-contact-sheet.png') });
+    await page.screenshot({
+      path: path.resolve('test-results/tests/builtin-models-contact-sheet.png'),
+    });
     fs.writeFileSync(
-      path.resolve('test-results/builtin-models-review.json'),
+      path.resolve('test-results/tests/builtin-models-review.json'),
       JSON.stringify(results, null, 2),
     );
     await page.evaluate(() => window.releaseReview());

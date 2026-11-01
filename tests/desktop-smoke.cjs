@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { _electron } = require('playwright');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -6,20 +7,22 @@ const { randomUUID } = require('node:crypto');
 
 (async () => {
   const { startDesktopEnvironment } = await import('../dev-tools/start-desktop.mjs');
-  const environment = await startDesktopEnvironment();
-  const base = path.resolve('test-results', 'desktop-home-' + randomUUID());
+  const packaged = process.env.MAP_EDITOR_TEST_PACKAGED;
+  const environment = packaged ? null : await startDesktopEnvironment();
+  const base = path.resolve('test-results/tests', 'desktop-home-' + randomUUID());
   await fs.mkdir(base, { recursive: true });
   const variables = {
     ...process.env,
-    MAP_EDITOR_DEV_URL: environment.url,
     MAP_EDITOR_PROFILE: path.join(base, 'profile'),
   };
+  if (environment) variables.MAP_EDITOR_DEV_URL = environment.url;
+  else delete variables.MAP_EDITOR_DEV_URL;
   delete variables.ELECTRON_RUN_AS_NODE;
   let application;
   const launch = async () => {
     application = await _electron.launch({
-      executablePath: require('electron'),
-      args: [environment.runtime],
+      executablePath: packaged || require('electron'),
+      args: environment ? [environment.runtime] : [],
       env: variables,
       timeout: 60000,
     });
@@ -44,6 +47,16 @@ const { randomUUID } = require('node:crypto');
       if (m.type() === 'error') errors.push(m.text());
     });
     await page.getByRole('heading', { name: '三维战略地图编辑器' }).waitFor();
+    await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setContentSize(1280, 720),
+    );
+    await page.screenshot({ path: path.join(base, 'home-empty.png') });
+    assert.equal(await page.locator('.editor-shell').count(), 0);
+    assert.equal(await page.locator('.home-shortcut').count(), 3);
+    assert.equal(
+      await page.locator('.home-screen').evaluate((element) => getComputedStyle(element).overflowY),
+      'auto',
+    );
     const preferences = await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences(),
     );
@@ -56,6 +69,11 @@ const { randomUUID } = require('node:crypto');
     await page.getByRole('button', { name: '打开工程', exact: true }).click();
     assert.equal(await page.getByText('近期工程').count(), 0);
     await page.getByRole('button', { name: '创建工程', exact: true }).click();
+    await page.screenshot({ path: path.join(base, 'home-create.png') });
+    const createButtonBounds = await page
+      .getByRole('button', { name: '创建工程', exact: true })
+      .boundingBox();
+    assert.ok(createButtonBounds && createButtonBounds.y + createButtonBounds.height <= 720);
     await page.getByLabel('工程名称').fill('空白地图');
     await page.getByRole('button', { name: '选择父目录' }).click();
     assert.equal(await page.getByLabel('导入示例工程').isChecked(), false);
@@ -70,6 +88,7 @@ const { randomUUID } = require('node:crypto');
     assert.deepEqual(blankObjects.sites, []);
     await page.getByRole('button', { name: '返回首页' }).click();
     await page.getByRole('heading', { name: '近期工程' }).waitFor();
+    await page.screenshot({ path: path.join(base, 'home-recent.png') });
     await application.evaluate(
       (_electron, file) => {
         globalThis.testOpenPath = file;
@@ -223,6 +242,7 @@ const { randomUUID } = require('node:crypto');
     await fs.writeFile(recentFile, '[{"invalid":true}]');
     page = await launch();
     await page.getByRole('alert').filter({ hasText: '近期工程记录格式错误' }).waitFor();
+    await page.screenshot({ path: path.join(base, 'home-error.png') });
     assert.equal(await fs.readFile(recentFile, 'utf8'), '[{"invalid":true}]');
     console.log(
       '首页空状态、创建空白和示例副本、未保存保护、近期记录持久化、失效重新定位与移除：通过',
@@ -236,7 +256,7 @@ const { randomUUID } = require('node:crypto');
         .catch(() => undefined);
       await application.close().catch(() => undefined);
     }
-    await environment.close();
+    if (environment) await environment.close();
   }
 })().catch((error) => {
   console.error(error);

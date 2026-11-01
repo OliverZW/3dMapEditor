@@ -25,6 +25,7 @@
 ├─ .agent/
 │  ├─ rules/                  项目长期适用的开发规则
 │  └─ docs/                   需求、设计、实施记录、目录说明
+│     ├─ RELEASE_NOTES.txt    版本记录
 │     └─ screenshots/         浮层外观设计参考
 ├─ src/                       编辑器应用的源码，另混有示例与生成数据
 ├─ desktop/                   Electron 主进程、受限 preload 和原生工程存储适配
@@ -35,25 +36,26 @@
 │  └─ water/                  内置水纹法线、碎纹遮罩及来源记录
 ├─ engine-adapters/
 │  └─ cocos/                  游戏接入说明及独立读取示例
-├─ dev-tools/                 开发检查与资源加工脚本
+├─ dev-tools/                 开发检查、构建配置与资源加工脚本（原 Blender 制作工程已移除）
+│  └─ forge.config.cjs        Electron 桌面打包配置
 ├─ tests/                     测试代码、测试初始化和场景生成脚本
-├─ test-results/              执行测试生成的地图包、导出包、报告和截图
-├─ dist/windows/              Windows x64 MSI 和发布记录
+├─ test-results/              tests/ 测试结果、builds/ 构建、cache/ 缓存、archive/ 历史归档
+├─ dist/mapEdtor-v<版本号>/  Windows x64 便携版
 ├─ node_modules/              npm 安装的第三方依赖
 ├─ package.json               依赖声明与运行命令
 ├─ package-lock.json          依赖版本锁定文件
-├─ index.html                 网页入口，挂载应用
+├─ web/index.html             网页入口，挂载应用
 ├─ tsconfig.json              TypeScript 严格检查配置
-├─ tsconfig.tsbuildinfo       TypeScript 增量检查缓存
 ├─ vite.config.ts             指定 editor-assets 静态资源目录
 ├─ vitest.config.ts           单元测试初始化与超时配置
 ├─ .prettierrc.json           源码格式约定
 ├─ .gitignore                 忽略依赖、构建、测试输出和缓存的约定
-├─ RELEASE_NOTES.txt          本机生产版的版本记录
-├─ 构建.cmd                   Windows MSI 构建入口
-├─ 启动编辑器.cmd             旧的开发启动入口
-└─ start-editor.ps1           选择已有 Node 运行时并启动本地服务
+├─ 构建.cmd                   Windows 便携版构建入口
+├─ 启动编辑器.cmd             浏览器开发启动入口
+└─ dev-tools/start-editor.ps1 选择已有 Node 运行时并启动本地服务
 ```
+
+历史测试产物位于 `test-results/archive/legacy-2026-11-01-104237/`，原路径映射见同目录旁的清单；后续测试结果写入 `test-results/tests/`。
 
 根目录目前没有独立的正式地图作品目录；不能把 `test-results` 当作作品库。浏览器下载的 `.map3d` 实际存放位置由下载设置决定，未必在这个工程目录中。
 
@@ -62,7 +64,7 @@
 ### 哪些是长期资料，哪些是执行产物
 
 - **长期维护**：`src` 中的业务代码、`editor-assets` 中应用资源、`engine-adapters`、`dev-tools`、`tests`、规则、文档及根目录配置。正式地图作品应独立保存和备份；新的工程文件夹约定已确定、待实现，见[地图工程规范](map-project-format.md)。
-- **运行后生成**：`dist`、`test-results`、`tsconfig.tsbuildinfo`。通常可以重新生成，但不能以目录名为由直接删除误存其中的人工成果。
+- **运行后生成**：`dist`、`test-results`。通常可以重新生成，但不能以目录名为由直接删除误存其中的人工成果。
 - **安装后生成**：`node_modules`，由包声明与锁文件恢复；它的体积不等于本项目自己编写的代码体积。
 - **脚本生成但目前位于源码范围**：地表默认描述、图片和测试图片编码。它们有被应用或测试引用，不能按“生成文件”直接删除。
 

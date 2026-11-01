@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { setup, launch } = require('./model-fixture.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -17,7 +18,7 @@ const singleCase = process.argv.find((arg) => arg.startsWith('--case='))?.slice(
 const caseParts = singleCase?.match(/^(full|surface|models)-(513|1025)-(close|middle|far)$/);
 if (singleCase && !caseParts) throw Error('无效的性能复测场景');
 const output = path.resolve(
-  'test-results',
+  'test-results/tests',
   `render-optimization${singleCase ? '-' + singleCase : ''}${mergeProbe ? '-' + mergeProbe : ''}${shader ? '-shader' : ''}${qualityOnly ? '-quality' : quick ? '-quick' : ''}`,
 );
 const report = { conditions: {}, quality: [], measurements: [], motion: [], errors: [] };

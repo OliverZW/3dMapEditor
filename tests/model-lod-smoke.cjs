@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { setup, launch } = require('./model-fixture.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -280,7 +281,7 @@ const assert = require('node:assert/strict');
     });
     assert.deepEqual(report.errors, []);
   } finally {
-    fs.writeFileSync('test-results/model-lod-smoke.json', JSON.stringify(report, null, 2));
+    fs.writeFileSync('test-results/tests/model-lod-smoke.json', JSON.stringify(report, null, 2));
     await browser.close();
   }
 })().catch((e) => {

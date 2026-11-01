@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { launch } = require('./surface-fixture.cjs');
 const { unzipSync, strFromU8 } = require('fflate');
 const assert = require('node:assert/strict');
@@ -34,7 +35,7 @@ const fs = require('node:fs');
           box.y + box.height <= height + 1,
       );
       assert(await dialog.getByRole('button', { name: '生成并下载', exact: true }).isVisible());
-      await page.screenshot({ path: `test-results/engine-export-v2-ui-${width}.png` });
+      await page.screenshot({ path: `test-results/tests/engine-export-v2-ui-${width}.png` });
       report.checks.push(`${width}×${height} 导出说明及操作完整显示`);
       if (width === 1600) await dialog.getByRole('button', { name: '取消', exact: true }).click();
     }
@@ -42,7 +43,7 @@ const fs = require('node:fs');
     const pending = page.waitForEvent('download');
     await dialog.getByRole('button', { name: '生成并下载', exact: true }).click();
     const download = await pending;
-    await download.saveAs('test-results/engine-export-v2-ui.zip');
+    await download.saveAs('test-results/tests/engine-export-v2-ui.zip');
     const files = unzipSync(fs.readFileSync(await download.path()));
     const manifest = JSON.parse(strFromU8(files['manifest.json']));
     assert.equal(manifest.exportVersion, 2);
@@ -55,7 +56,10 @@ const fs = require('node:fs');
     assert.deepEqual(report.errors, []);
     console.log(JSON.stringify(report, null, 2));
   } finally {
-    fs.writeFileSync('test-results/engine-export-v2-ui.json', JSON.stringify(report, null, 2));
+    fs.writeFileSync(
+      'test-results/tests/engine-export-v2-ui.json',
+      JSON.stringify(report, null, 2),
+    );
     await browser.close();
   }
 })().catch((error) => {

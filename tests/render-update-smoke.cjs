@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { setup, launch } = require('./model-fixture.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -192,7 +193,7 @@ const median = (values) => values.slice().sort((a, b) => a - b)[Math.floor(value
     assert.deepEqual(report.errors, []);
   } finally {
     fs.writeFileSync(
-      'test-results/render-update-smoke.json',
+      'test-results/tests/render-update-smoke.json',
       JSON.stringify(report, null, 2) + '\n',
     );
     await browser.close();

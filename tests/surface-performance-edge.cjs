@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -115,7 +116,7 @@ const { installModes, mode, measure } = require('./surface-performance.cjs');
     });
   } finally {
     fs.writeFileSync(
-      path.resolve(__dirname, '../test-results/surface-performance-edge-report.json'),
+      path.resolve(__dirname, '../test-results/tests/surface-performance-edge-report.json'),
       JSON.stringify(report, null, 2),
     );
     await browser.close();

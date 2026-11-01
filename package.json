@@ -16,8 +16,8 @@
     "build": "node dev-tools/build-windows.mjs",
     "test": "vitest run",
     "test:browser": "node tests/browser-smoke.cjs",
-    "format": "prettier --write src tests dev-tools engine-adapters index.html package.json tsconfig.json vite.config.ts vitest.config.ts",
-    "format:check": "prettier --check src tests dev-tools engine-adapters index.html package.json tsconfig.json vite.config.ts vitest.config.ts",
+    "format": "prettier --write src tests dev-tools engine-adapters web package.json tsconfig.json vite.config.ts vitest.config.ts",
+    "format:check": "prettier --check src tests dev-tools engine-adapters web package.json tsconfig.json vite.config.ts vitest.config.ts",
     "check:unused": "tsc -b && node dev-tools/check-unused.mjs",
     "test:interaction": "node tests/interaction-smoke.cjs",
     "test:navigation-resources": "node tests/navigation-resources-smoke.cjs",
@@ -54,7 +54,6 @@
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.1",
-    "@electron-forge/maker-wix": "7.11.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@types/three": "0.183.1",

@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export async function startDesktopEnvironment() {
-  const runtime = resolve(root, 'test-results/desktop-runtime');
+  const runtime = resolve(root, 'test-results/cache/desktop-runtime');
   await mkdir(runtime, { recursive: true });
   for (const file of await readdir(resolve(root, 'desktop'))) {
     if (!file.endsWith('.ts')) continue;

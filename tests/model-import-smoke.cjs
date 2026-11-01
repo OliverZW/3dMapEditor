@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { _electron } = require('playwright');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -7,7 +8,7 @@ const { randomUUID } = require('node:crypto');
 (async () => {
   const { startDesktopEnvironment } = await import('../dev-tools/start-desktop.mjs');
   const environment = await startDesktopEnvironment();
-  const base = path.resolve('test-results', 'model-import-' + randomUUID());
+  const base = path.resolve('test-results/tests', 'model-import-' + randomUUID());
   await fs.mkdir(base, { recursive: true });
   const variables = {
     ...process.env,

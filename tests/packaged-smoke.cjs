@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { _electron } = require('playwright');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -7,7 +8,7 @@ const { spawn } = require('node:child_process');
 
 (async () => {
   const executablePath = path.resolve(process.argv[2]);
-  const base = path.resolve('test-results', `packaged-smoke-${randomUUID()}`);
+  const base = path.resolve('test-results/tests', `packaged-smoke-${randomUUID()}`);
   await fs.mkdir(base, { recursive: true });
   const env = { ...process.env, MAP_EDITOR_PROFILE: path.join(base, 'profile') };
   delete env.ELECTRON_RUN_AS_NODE;

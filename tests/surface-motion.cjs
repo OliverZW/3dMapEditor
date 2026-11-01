@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -83,7 +84,7 @@ const { installModes, mode } = require('./surface-performance.cjs');
     console.log('九个往返镜头的无损画面对照、页面过渡及预算检查通过');
   } finally {
     fs.writeFileSync(
-      path.resolve(__dirname, '../test-results/surface-motion-report.json'),
+      path.resolve(__dirname, '../test-results/tests/surface-motion-report.json'),
       JSON.stringify(report, null, 2),
     );
     await browser.close();

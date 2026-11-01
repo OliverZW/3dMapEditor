@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -141,7 +142,7 @@ async function main() {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
-  const artifacts = path.resolve(__dirname, '../test-results');
+  const artifacts = path.resolve(__dirname, '../test-results/tests');
   fs.mkdirSync(artifacts, { recursive: true });
   const label = process.argv.includes('--baseline') ? 'before' : 'after';
   try {

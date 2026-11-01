@@ -9,13 +9,13 @@ import { CloseController } from '../desktop/close-controller';
 import { createDocument } from '../src/core/document';
 import { ProjectRepository } from '../src/io/project-storage';
 
-const base = path.resolve('test-results', `native-storage-${randomUUID()}`);
+const base = path.resolve('test-results/tests', `native-storage-${randomUUID()}`);
 async function root(name: string) {
   await fs.mkdir(base, { recursive: true });
   return new NativeProjectStorage(path.join(base, name));
 }
 afterAll(async () => {
-  if (!base.startsWith(path.resolve('test-results') + path.sep))
+  if (!base.startsWith(path.resolve('test-results/tests') + path.sep))
     throw new Error('测试清理目录越界');
   await fs.rm(base, { recursive: true, force: true });
 });

@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { launch, fixture } = require('./surface-fixture.cjs');
 const { unzipSync, zipSync, strFromU8, strToU8 } = require('fflate');
 const fs = require('node:fs');
@@ -6,7 +7,7 @@ const assert = require('node:assert/strict');
 
 const materialData = (value) =>
   JSON.parse(JSON.stringify(value, (key, item) => (key === 'resource' ? undefined : item)));
-const artifacts = path.resolve(__dirname, '../test-results');
+const artifacts = path.resolve(__dirname, '../test-results/tests');
 async function main() {
   fs.mkdirSync(artifacts, { recursive: true });
   const browser = await launch();
@@ -158,7 +159,7 @@ async function main() {
     await page.evaluate(async () => {
       const { saveDraft } = await import('/src/platform/files.ts');
       const bytes = new Uint8Array(
-        await (await fetch('/test-results/surface-ui.map3d')).arrayBuffer(),
+        await (await fetch('/test-results/tests/surface-ui.map3d')).arrayBuffer(),
       );
       await saveDraft(bytes);
     });

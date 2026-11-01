@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { _electron } = require('playwright');
 const { unzipSync, zipSync, strFromU8, strToU8 } = require('fflate');
 const fs = require('node:fs/promises');
@@ -8,7 +9,7 @@ const { randomUUID } = require('node:crypto');
 (async () => {
   const { startDesktopEnvironment } = await import('../dev-tools/start-desktop.mjs');
   const environment = await startDesktopEnvironment();
-  const base = path.resolve('test-results', `backup-smoke-${randomUUID()}`);
+  const base = path.resolve('test-results/tests', `backup-smoke-${randomUUID()}`);
   await fs.mkdir(base, { recursive: true });
   const backup = path.join(base, '备份.map3d');
   const restored = path.join(base, '恢复工程');

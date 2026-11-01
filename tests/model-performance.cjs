@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { setup, launch } = require('./model-fixture.cjs');
 const fs = require('node:fs');
 (async () => {
@@ -29,7 +30,10 @@ const fs = require('node:fs');
     );
     if (original && optimized)
       report.modelTriangleReduction = 1 - optimized.modelTriangles / original.modelTriangles;
-    fs.writeFileSync('test-results/model-performance.json', JSON.stringify(report, null, 2) + '\n');
+    fs.writeFileSync(
+      'test-results/tests/model-performance.json',
+      JSON.stringify(report, null, 2) + '\n',
+    );
   };
   try {
     for (const simple of [false, true])
@@ -104,7 +108,7 @@ const fs = require('node:fs');
           console.log(JSON.stringify(report.measurements.at(-1)));
         }
         await page.screenshot({
-          path: `test-results/model-performance-${simple ? 'models-only' : 'full-map'}-${mode}.png`,
+          path: `test-results/tests/model-performance-${simple ? 'models-only' : 'full-map'}-${mode}.png`,
         });
         await page.evaluate(() => window.modelFixture.release());
         await page.close();

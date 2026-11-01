@@ -1794,42 +1794,142 @@ button:focus-visible,
 }
 .home-screen {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 32px;
-  background: radial-gradient(ellipse at 50% 20%, #243441, #111922 72%);
+  height: 100vh;
+  overflow: auto;
+  padding: 44px 32px;
+  background: #111e2d;
   color: #d8e3eb;
 }
-.home-card {
-  width: min(780px, 100%);
-  max-height: calc(100vh - 64px);
-  overflow: auto;
-  padding: 36px 42px;
-  border: 1px solid #3a4d5b;
-  border-radius: 12px;
-  background: #1a2731;
-  box-shadow: 0 18px 60px #0006;
+.home-content {
+  width: min(840px, 100%);
+  margin: max(32px, calc((100vh - 650px) / 2)) auto 48px;
+}
+.home-heading {
+  text-align: center;
+  margin-bottom: 46px;
 }
 .home-brand {
-  font-size: 30px;
+  margin: 0 0 12px;
+  color: #8fb7d1;
+  font-size: 14px;
   letter-spacing: 0.22em;
-  color: #b6dcf4;
 }
 .home-brand small {
   font-size: 10px;
   letter-spacing: 0.18em;
   color: #849ba9;
 }
-.home-card h1 {
-  font-size: 19px;
-  font-weight: 500;
-  margin: 8px 0 30px;
-  color: #aabdc8;
+.home-heading h1 {
+  margin: 0 0 12px;
+  color: #c5e5fa;
+  font-size: 32px;
+  font-weight: 600;
 }
-.home-card h2 {
-  font-size: 15px;
+.home-heading > p:last-child {
+  margin: 0;
+  color: #94aabc;
+  font-size: 16px;
+}
+.home-content h2 {
+  font-size: 16px;
   font-weight: 600;
   margin: 26px 0 14px;
+}
+.home-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+button.home-shortcut {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 8px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: normal;
+}
+button.home-shortcut:hover:not(:disabled),
+button.home-shortcut:focus-visible {
+  background: #1c3044;
+  border-color: #4c6d87;
+  outline: none;
+}
+.home-shortcut-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #344b61;
+  border-radius: 8px;
+  background: #18293b;
+  color: #c6daeb;
+}
+.home-shortcut-primary {
+  background: #3e709d;
+  border-color: #719fc6;
+  color: white;
+}
+.home-shortcut-copy {
+  display: grid;
+  gap: 6px;
+}
+.home-shortcut-copy strong {
+  font-size: 15px;
+  color: #c9e5f9;
+}
+.home-shortcut-copy small {
+  font-size: 12px;
+  color: #8da4b8;
+}
+.home-return {
+  margin-top: 16px;
+}
+.home-content.is-creating {
+  margin-top: 0;
+}
+.is-creating .home-heading {
+  margin-bottom: 20px;
+}
+.is-creating .home-heading h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.is-creating .home-brand {
+  margin-bottom: 4px;
+}
+.is-creating .home-heading > p:last-child {
+  font-size: 13px;
+}
+.home-create h2 {
+  margin-top: 8px;
+}
+.home-create {
+  max-width: 600px;
+  margin: 0 auto;
+}
+@media (max-width: 720px) {
+  .home-screen {
+    padding: 24px 20px;
+  }
+  .home-content {
+    margin-top: 24px;
+  }
+  .home-heading {
+    margin-bottom: 24px;
+  }
+  .home-shortcuts {
+    grid-template-columns: 1fr;
+  }
+  .home-recent-row {
+    flex-wrap: wrap;
+  }
+  .home-project {
+    flex-basis: 100%;
+  }
 }
 .home-actions,
 .home-parent {
@@ -1862,14 +1962,19 @@ button:focus-visible,
   overflow-wrap: anywhere;
 }
 .home-recent {
-  margin-top: 32px;
+  margin-top: 42px;
+  padding-top: 12px;
+  border-top: 1px solid #304155;
 }
 .home-recent-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid #344550;
-  padding: 10px 0;
+  border: 1px solid #304155;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: #172638;
 }
 .home-project {
   flex: 1;

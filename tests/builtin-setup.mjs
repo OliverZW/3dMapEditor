@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+mkdirSync('test-results/tests', { recursive: true });
 import { builtinResourceEntries, installBuiltinResources } from '../src/io/builtin-resources';
 
 installBuiltinResources(

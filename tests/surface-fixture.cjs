@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { chromium } = require('playwright');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -116,14 +117,14 @@ async function main() {
       });
       await page.waitForTimeout(600);
     }
-    fs.mkdirSync(path.resolve(__dirname, '../test-results'), { recursive: true });
+    fs.mkdirSync(path.resolve(__dirname, '../test-results/tests'), { recursive: true });
     const label = process.argv.includes('--baseline')
       ? 'before'
       : process.argv.includes('--close')
         ? 'closeup'
         : 'after';
     await page.screenshot({
-      path: path.resolve(__dirname, `../test-results/surface-${label}.png`),
+      path: path.resolve(__dirname, `../test-results/tests/surface-${label}.png`),
     });
     assert.deepEqual(errors, []);
     console.log(`surface-${label}: captured; errors=0`);

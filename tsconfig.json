@@ -13,7 +13,8 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "tsBuildInfoFile": "./test-results/cache/tsconfig.tsbuildinfo"
   },
   "include": ["src", "tests", "desktop"]
 }

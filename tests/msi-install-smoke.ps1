@@ -14,7 +14,8 @@ if ($existing) { throw '已有安装，拒绝覆盖' }
 $programs = [Environment]::GetFolderPath('Programs')
 $desktop = [Environment]::GetFolderPath('DesktopDirectory')
 if ((Get-ChildItem -LiteralPath $programs -Recurse -Filter '山河地图编辑器.lnk' -ErrorAction SilentlyContinue) -or (Test-Path -LiteralPath (Join-Path $desktop '山河地图编辑器.lnk'))) { throw '已有同名快捷方式，拒绝覆盖' }
-$base = Join-Path $root ('test-results\msi-check-' + [guid]::NewGuid().ToString())
+New-Item -ItemType Directory -Force -Path (Join-Path $root 'test-results/tests') | Out-Null
+$base = Join-Path $root ('test-results/tests\msi-check-' + [guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $base | Out-Null
 $target = Join-Path $base 'app'
 $log = Join-Path $base 'install.log'

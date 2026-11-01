@@ -98,7 +98,7 @@ function fixture() {
   return doc;
 }
 function saveFixture(files, suffix) {
-  const directory = path.resolve('test-results/engine-export-v2-' + suffix);
+  const directory = path.resolve('test-results/tests/engine-export-v2-' + suffix);
   mkdirSync(directory, { recursive: true });
   for (const [name, bytes] of Object.entries(files)) {
     const file = path.join(directory, name);
@@ -116,7 +116,7 @@ beforeAll(async () => {
   files = unzipSync(result.bytes);
   manifest = json(files, 'manifest.json');
   directory = saveFixture(files, 'fixture');
-  writeFileSync('test-results/engine-export-v2.zip', result.bytes);
+  writeFileSync('test-results/tests/engine-export-v2.zip', result.bytes);
 }, 120000);
 
 describe('v2 实际数据包与独立读取', () => {

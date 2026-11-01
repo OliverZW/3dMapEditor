@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FolderOpen, History, Plus } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
 import { createDocument } from '../core/document';
 import { DesktopProjectSession } from '../application/desktop-project-session';
@@ -92,11 +93,14 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
     );
   return (
     <main className="home-screen">
-      <div className="home-card">
-        <div className="home-brand">
-          山河 <small>MAP STUDIO</small>
-        </div>
-        <h1>三维战略地图编辑器</h1>
+      <div className={`home-content${creating ? ' is-creating' : ''}`}>
+        <header className="home-heading">
+          <p className="home-brand">
+            山河 <small>MAP STUDIO</small>
+          </p>
+          <h1>三维战略地图编辑器</h1>
+          <p>创建三维地理场景，构建你的战略世界</p>
+        </header>
         {error && (
           <p className="home-error" role="alert">
             {error}
@@ -189,14 +193,38 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
           </div>
         ) : (
           <>
-            <div className="home-actions">
-              <Button className="primary" disabled={busy} onClick={() => setCreating(true)}>
-                创建工程
-              </Button>
-              <Button disabled={busy} onClick={() => void run(() => desktop.open())}>
-                打开工程
-              </Button>
-              <Button
+            <nav className="home-shortcuts" aria-label="工程操作">
+              <button
+                className="home-shortcut"
+                aria-label="创建工程"
+                disabled={busy}
+                onClick={() => setCreating(true)}
+              >
+                <span className="home-shortcut-icon home-shortcut-primary">
+                  <Plus size={25} />
+                </span>
+                <span className="home-shortcut-copy">
+                  <strong>创建工程</strong>
+                  <small>新建一个地图工程</small>
+                </span>
+              </button>
+              <button
+                className="home-shortcut"
+                aria-label="打开工程"
+                disabled={busy}
+                onClick={() => void run(() => desktop.open())}
+              >
+                <span className="home-shortcut-icon">
+                  <FolderOpen size={24} />
+                </span>
+                <span className="home-shortcut-copy">
+                  <strong>打开工程</strong>
+                  <small>打开本地工程</small>
+                </span>
+              </button>
+              <button
+                className="home-shortcut"
+                aria-label="恢复备份"
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
@@ -205,14 +233,22 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
                   })
                 }
               >
-                恢复备份
-              </Button>
-              {hasProject && (
+                <span className="home-shortcut-icon">
+                  <History size={24} />
+                </span>
+                <span className="home-shortcut-copy">
+                  <strong>恢复备份</strong>
+                  <small>从备份中恢复工程</small>
+                </span>
+              </button>
+            </nav>
+            {hasProject && (
+              <div className="home-return">
                 <Button disabled={busy} onClick={() => setEditing(true)}>
                   返回编辑器
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
             {recent.length > 0 && (
               <section className="home-recent">
                 <h2>近期工程</h2>

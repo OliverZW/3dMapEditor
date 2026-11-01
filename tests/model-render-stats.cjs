@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { setup, launch } = require('./model-fixture.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -213,7 +214,7 @@ const fs = require('node:fs');
     assert.deepEqual(report.errors, []);
     console.log(JSON.stringify(report.checks, null, 2));
   } finally {
-    fs.writeFileSync('test-results/model-render-stats.json', JSON.stringify(report, null, 2));
+    fs.writeFileSync('test-results/tests/model-render-stats.json', JSON.stringify(report, null, 2));
     await browser.close();
   }
 })().catch((error) => {

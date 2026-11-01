@@ -1,9 +1,10 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { chromium } = require('playwright');
 const { unzipSync, zipSync, strFromU8, strToU8 } = require('fflate');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const artifacts = path.resolve(__dirname, '../test-results');
+const artifacts = path.resolve(__dirname, '../test-results/tests');
 const edge = path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft/Edge/Application/msedge.exe');
 fs.mkdirSync(artifacts, { recursive: true });
 

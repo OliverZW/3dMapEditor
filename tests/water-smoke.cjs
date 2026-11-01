@@ -1,10 +1,11 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { launch } = require('./surface-fixture.cjs');
 const { fixture, camera } = require('./water-fixture.cjs');
 const { measure } = require('./water-visibility.cjs');
-const artifacts = path.resolve(__dirname, '../test-results');
+const artifacts = path.resolve(__dirname, '../test-results/tests');
 
 async function main() {
   fs.mkdirSync(artifacts, { recursive: true });

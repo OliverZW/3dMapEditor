@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { launch } = require('./surface-fixture.cjs');
 const { unzipSync, strFromU8 } = require('fflate');
 const fs = require('node:fs');
@@ -13,7 +14,7 @@ const assert = require('node:assert/strict');
     });
     page.setDefaultTimeout(90000);
     const url = process.env.EDITOR_URL || 'http://127.0.0.1:5173/';
-    const artifacts = path.resolve('test-results');
+    const artifacts = path.resolve('test-results/tests');
     const projectPath = path.join(artifacts, 'builtin-fixture.map3d');
     const errors = [];
     page.on('pageerror', (error) => errors.push(String(error)));

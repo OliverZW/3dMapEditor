@@ -1,6 +1,6 @@
 ﻿# 山河 · 三维战略地图编辑器
 
-山河是基于 Three.js、React 和 TypeScript 的三维战略地图编辑器，支持 Windows Electron 桌面运行，并保留浏览器开发回归入口。它将连续高度场地形与六边形逻辑网格结合，用于制作包含地貌、植被、河流、据点和势力范围的地图，也可作为定制地图编辑器的开发基础。
+山河是基于 Three.js、React 和 TypeScript 的三维战略地图编辑器，支持 Windows Electron 桌面运行，以浏览器作为默认开发入口。它将连续高度场地形与六边形逻辑网格结合，用于制作包含地貌、植被、河流、据点和势力范围的地图，也可作为定制地图编辑器的开发基础。
 
 ## 主要功能
 
@@ -18,12 +18,9 @@
 
 ```sh
 npm ci
-npm run dev:desktop
 ```
 
-开发命令启动本地服务和 Electron 桌面窗口，退出窗口后停止服务。首页可创建工程、打开已有工程及访问近期工程；创建时选择父目录，默认创建空白地图，也可勾选导入独立的示例副本。编辑器保存直接写入工程目录，关闭或返回首页时保护未保存修改。
-
-详见[Windows 桌面开发](.agent/docs/desktop-development.md)。浏览器调试可运行 `npm run dev`，访问终端显示的本机地址；这是保留的开发回归入口，不作为新版 Web 发布交付。
+双击 `启动编辑器.cmd`，启动本机 Vite 服务并在浏览器打开开发版。桌面开发可使用 `npm run dev:desktop`，详见[Windows 桌面开发](.agent/docs/desktop-development.md)。
 
 检查代码及运行桌面回归：
 
@@ -35,11 +32,11 @@ npm run test:desktop
 
 目前完整测试中有一项既有 LOD 素材面数阈值未通过，具体记录见[实施记录](.agent/docs/implementation.md)。
 
-在 Windows x64 安装 WiX Toolset 3.14 并将其 `bin` 目录加入 PATH，运行根目录 `构建.cmd` 或 `npm run build`。两者执行相同流程，最终生成 `dist/windows/ShanheMapEditor-<版本>-x64.msi` 和发布记录；安装后的应用运行不需要 Node.js。安装包按当前用户安装，关联 `.map3dproj`，卸载保留用户工程。
+在 Windows x64 运行 `构建.cmd` 或 `npm run build`，生成 `dist/mapEdtor-v<版本号>`。将整个文件夹复制到目标电脑，双击 `ShanheMapEditor.exe`。应用需要 Windows 10 或更新的 x64 系统，无需安装 Node.js。便携版不注册开始菜单或文件关联，用户工程与应用配置保留在原位置。应用无自动更新和签名。
 
-**当前安装包仅供本机研究验证，不得公开分发。** 部分内置地表和水面资源的来源限制须在公开发布前解决。
+现有素材已由用户确认可在目标电脑使用；公开分发前仍需确认素材分发授权。
 
-发布新版本前，同步更新 `package.json`、`package-lock.json` 的版本及根目录 `RELEASE_NOTES.txt`，记录日期和实际变更并保留旧条目，再运行 `npm run build`。
+发布新版本前，同步更新 `package.json`、`package-lock.json` 的版本及 `.agent/docs/RELEASE_NOTES.txt`，记录日期和实际变更并保留旧条目，再运行 `npm run build`。
 
 ## 定制入口
 
@@ -61,6 +58,6 @@ npm run test:desktop
 ## 进一步阅读
 
 - [项目资料索引](.agent/docs/README.md)：需求、设计、操作说明及实现状态。
-- [发布记录](RELEASE_NOTES.txt)：各版本的更新内容。
+- [发布记录](.agent/docs/RELEASE_NOTES.txt)：各版本的更新内容。
 
-部分内置地表和水面素材仅供本机研究，公开分发前需替换为具备相应使用授权的资源。
+公开分发前需确认内置地表和水面素材的分发授权。

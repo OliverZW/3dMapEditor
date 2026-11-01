@@ -1,3 +1,4 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -130,7 +131,7 @@ async function main() {
         }
       });
       const { data, ...report } = result;
-      const target = path.resolve(__dirname, `../test-results/water-flow-${view}.webm`);
+      const target = path.resolve(__dirname, `../test-results/tests/water-flow-${view}.webm`);
       fs.writeFileSync(target, Buffer.from(data, 'base64'));
       reports.push({ view, ...report, metrics });
       console.log(JSON.stringify(reports.at(-1)));
@@ -140,7 +141,7 @@ async function main() {
     }
     assert.deepEqual(errors, []);
     fs.writeFileSync(
-      path.resolve(__dirname, '../test-results/water-recording-report.json'),
+      path.resolve(__dirname, '../test-results/tests/water-recording-report.json'),
       JSON.stringify({ reports, errors }, null, 2),
     );
   } finally {

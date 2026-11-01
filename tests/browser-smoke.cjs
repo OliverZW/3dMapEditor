@@ -1,9 +1,10 @@
+require('node:fs').mkdirSync('test-results/tests', { recursive: true });
 const { chromium } = require('playwright');
 const { unzipSync, strFromU8 } = require('fflate');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const artifactPath = path.resolve(__dirname, '../test-results');
+const artifactPath = path.resolve(__dirname, '../test-results/tests');
 fs.mkdirSync(artifactPath, { recursive: true });
 const edgeCandidate = path.join(
   process.env['PROGRAMFILES(X86)'] || '',
