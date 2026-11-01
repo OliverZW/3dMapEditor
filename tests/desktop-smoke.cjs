@@ -52,7 +52,8 @@ const { randomUUID } = require('node:crypto');
     );
     await page.screenshot({ path: path.join(base, 'home-empty.png') });
     assert.equal(await page.locator('.editor-shell').count(), 0);
-    assert.equal(await page.locator('.home-shortcut').count(), 3);
+    assert.equal(await page.locator('.home-shortcut').count(), 2);
+    assert.equal(await page.getByRole('button', { name: '恢复备份', exact: true }).count(), 0);
     assert.equal(
       await page.locator('.home-screen').evaluate((element) => getComputedStyle(element).overflowY),
       'auto',
@@ -80,6 +81,52 @@ const { randomUUID } = require('node:crypto');
     assert.equal(await page.getByLabel('导入示例工程').isChecked(), false);
     await page.getByRole('button', { name: '创建工程', exact: true }).click();
     await page.getByRole('button', { name: '保存工程', exact: true }).waitFor();
+    for (const name of ['新建', '打开', '导出备份', '恢复备份'])
+      assert.equal(await page.getByRole('button', { name, exact: true }).count(), 0);
+    assert.equal(await page.locator('.viewport-actions select').count(), 0);
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    const settings = page.getByRole('dialog', { name: '设置', exact: true });
+    await settings.getByLabel('显卡偏好').isEnabled();
+    assert.equal(await settings.getByLabel('显卡偏好').inputValue(), 'discrete');
+    await settings.getByLabel('显示档位', { exact: true }).selectOption('high');
+    assert.equal(
+      await settings.getByRole('checkbox', { name: '阴影', exact: false }).isChecked(),
+      true,
+    );
+    await settings.getByRole('button', { name: '取消', exact: true }).click();
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    assert.equal(await settings.getByLabel('显示档位', { exact: true }).inputValue(), 'fast');
+    await settings.getByLabel('显示档位', { exact: true }).selectOption('balanced');
+    await settings.getByRole('checkbox', { name: '抗锯齿', exact: false }).check();
+    await settings.getByRole('checkbox', { name: '按需渲染', exact: false }).uncheck();
+    await settings.getByText('已自定义', { exact: false }).waitFor();
+    await settings.getByLabel('显卡偏好').selectOption('integrated');
+    await settings.getByRole('button', { name: '应用', exact: true }).click();
+    await settings.waitFor({ state: 'hidden' });
+    assert.equal(await page.getByTestId('map-canvas').count(), 1);
+    assert.equal(
+      await page
+        .getByTestId('map-canvas')
+        .evaluate((canvas) => canvas.getContext('webgl2').getContextAttributes().antialias),
+      true,
+    );
+    assert.equal(
+      JSON.parse(await fs.readFile(path.join(base, 'profile', 'gpu-preference.json'), 'utf8')),
+      'integrated',
+    );
+    assert.equal(
+      await page.evaluate(() => window.mapEditorDesktop.activeGpuPreference),
+      'discrete',
+    );
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    assert.equal(await settings.getByLabel('显示档位', { exact: true }).inputValue(), 'balanced');
+    assert.equal(
+      await settings.getByRole('checkbox', { name: '按需渲染', exact: false }).isChecked(),
+      false,
+    );
+    await settings.getByRole('button', { name: '恢复默认', exact: true }).click();
+    await settings.getByRole('button', { name: '应用', exact: true }).click();
+    await settings.waitFor({ state: 'hidden' });
     assert.equal(await page.evaluate(() => typeof window.mapEditorPerformance), 'undefined');
     const blankPath = path.join(base, '空白地图');
     const blank = JSON.parse(await fs.readFile(path.join(blankPath, 'project.map3dproj'), 'utf8'));

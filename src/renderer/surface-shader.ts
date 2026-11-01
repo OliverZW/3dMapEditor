@@ -15,6 +15,7 @@ uniform float uSurfaceSamples;
 uniform vec4 uSurfaceMeters;
 uniform float uSurfaceScale;
 uniform float uSurfaceDetail;
+uniform vec4 uSurfaceDetails;
 uniform float uSurfaceSlope;
 float surfaceNoise(vec2 p) {
   vec2 cell=floor(p), f=fract(p); f=f*f*(3.-2.*f);
@@ -69,10 +70,10 @@ const originalNormal = /* glsl */ `
 float surfaceFade=1.-smoothstep(90.,450.,length(vViewPosition));
 vec3 surfaceOffset=vec3(0);
 if(surfaceFade*uSurfaceDetail>0.) {
-  surfaceOffset=surfaceNormalOffset(uSurfaceNormal0,surfaceP/uSurfaceMeters.x,surfaceN,surfaceBlend)*surfaceW.x+
-    surfaceNormalOffset(uSurfaceNormal1,surfaceP/uSurfaceMeters.y,surfaceN,surfaceBlend)*surfaceW.y+
-    surfaceNormalOffset(uSurfaceNormal2,surfaceP/uSurfaceMeters.z,surfaceN,surfaceBlend)*surfaceW.z+
-    surfaceNormalOffset(uSurfaceNormal3,surfaceP/uSurfaceMeters.w,surfaceN,surfaceBlend)*surfaceW.w;
+  surfaceOffset=surfaceNormalOffset(uSurfaceNormal0,surfaceP/uSurfaceMeters.x,surfaceN,surfaceBlend)*surfaceW.x*uSurfaceDetails.x+
+    surfaceNormalOffset(uSurfaceNormal1,surfaceP/uSurfaceMeters.y,surfaceN,surfaceBlend)*surfaceW.y*uSurfaceDetails.y+
+    surfaceNormalOffset(uSurfaceNormal2,surfaceP/uSurfaceMeters.z,surfaceN,surfaceBlend)*surfaceW.z*uSurfaceDetails.z+
+    surfaceNormalOffset(uSurfaceNormal3,surfaceP/uSurfaceMeters.w,surfaceN,surfaceBlend)*surfaceW.w*uSurfaceDetails.w;
   surfaceOffset*=dot(surfaceW,vec4(.55,.70,.85,.40));
 }
 // 投射平面的切线扰动叠加几何法线，平法线贴图不会改变原始坡面方向。

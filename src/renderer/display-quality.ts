@@ -1,4 +1,32 @@
 export type DisplayQuality = 'fast' | 'balanced' | 'high';
+export type ShadowSize = 512 | 1024 | 2048;
+
+export function isShadowSize(value: unknown): value is ShadowSize {
+  return value === 512 || value === 1024 || value === 2048;
+}
+
+export interface RenderSettings {
+  quality: DisplayQuality;
+  shadows: boolean;
+  shadowSize: ShadowSize;
+  treeShadows: boolean;
+  antialias: boolean;
+  simplifiedSurface: boolean;
+  demandRendering: boolean;
+}
+
+export function presetSettings(quality: DisplayQuality): RenderSettings {
+  const { shadows, shadowSize, antialias, simplifiedSurface } = DISPLAY_QUALITIES[quality];
+  return {
+    quality,
+    shadows,
+    shadowSize,
+    treeShadows: true,
+    antialias,
+    simplifiedSurface,
+    demandRendering: true,
+  };
+}
 
 export const DISPLAY_QUALITIES = {
   fast: {

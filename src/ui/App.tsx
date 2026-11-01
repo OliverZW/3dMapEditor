@@ -13,7 +13,6 @@ import {
   Hexagon,
   Undo2,
   Redo2,
-  FolderOpen,
   Save,
   Plus,
   Box,
@@ -25,13 +24,14 @@ import {
   ExternalLink,
   Shield,
   Info,
+  Settings,
   Map,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
 import { DesktopProjectSession } from '../application/desktop-project-session';
 import { EditorViewport } from '../renderer/editor-viewport';
-import type { DisplayQuality } from '../renderer/display-quality';
+import type { RenderSettings } from '../renderer/display-quality';
 import { readDisplayPreference, writeDisplayPreference } from '../platform/display-preference';
 import { importGlb } from '../renderer/models';
 import type { AssetKind, ModelAsset, Tool } from '../core/types';
@@ -49,8 +49,10 @@ import { VegetationPalette } from './VegetationPalette';
 import { InspectorActions } from './InspectorActions';
 import { BrushPalette } from './BrushPalette';
 import { SurfaceInspector } from './SurfaceInspector';
+import { TextureLibrary } from './TextureLibrary';
+import type { TextureTarget } from './TextureLibrary';
 import { SurfaceLibrary } from './SurfaceLibrary';
-import { MapOverview, MapOverviewInspector, MapDimensions } from './MapOverview';
+import { MapOverview, MapOverviewInspector } from './MapOverview';
 import { Button, Group, Slider, NumberField } from './controls';
 import { FactionInspector } from './FactionInspector';
 import { ViewportToolbar } from './ViewportToolbar';
@@ -58,6 +60,7 @@ import { OrientationGizmo } from './OrientationGizmo';
 import { InputHints } from './InputHints';
 import type { CameraNavigation } from '../renderer/camera-navigation';
 import { SiteInspector } from './SiteInspector';
+import { RenderSettingsForm } from './RenderSettingsForm';
 import { OperationGuide } from './OperationGuide';
 const modelTriangleFormat = new Intl.NumberFormat('zh-CN', {
   notation: 'compact',
@@ -66,7 +69,7 @@ const modelTriangleFormat = new Intl.NumberFormat('zh-CN', {
 const TOOLS: { id: Tool; label: string; icon: LucideIcon; hint: string }[] = [
   { id: 'overview', label: '概览', icon: Map, hint: '工程概览与地面尺寸' },
   { id: 'terrain', label: '地形', icon: Mountain, hint: '雕刻连续高度场' },
-  { id: 'surface', label: '地表', icon: Paintbrush, hint: '四类地表权重涂刷' },
+  { id: 'surface', label: '地表', icon: Paintbrush, hint: '地表权重涂刷' },
   { id: 'trees', label: '树木', icon: Trees, hint: '种植与擦除树木' },
   { id: 'grass', label: '草丛', icon: Sprout, hint: '绘制立体草丛密度' },
   { id: 'river', label: '河流', icon: Waves, hint: '控制点曲线与非破坏河床' },
@@ -170,7 +173,7 @@ export function App({
 }: {
   initialSession?: EditorSession;
   initialDesktop?: DesktopProjectSession;
-  onHome?: (create?: boolean) => void;
+  onHome?: () => void;
 } = {}) {
   const [session] = useState(() => initialSession ?? new EditorSession());
   const [desktop] = useState(
@@ -200,42 +203,50 @@ export function App({
   const viewportElement = useRef<HTMLDivElement>(null),
     viewport = useRef<EditorViewport | null>(null);
   const [displayPreference] = useState(() => readDisplayPreference());
-  const [displayQuality, setDisplayQuality] = useState(displayPreference.quality);
-  const displayQualityRef = useRef(displayQuality);
+  const [renderSettings, setRenderSettings] = useState<RenderSettings>(displayPreference);
+  const renderSettingsRef = useRef(renderSettings);
   const recreateViewport = useRef<((antialias?: boolean) => EditorViewport) | null>(null);
-  function changeDisplayQuality(next: DisplayQuality) {
-    if (next === displayQuality || !recreateViewport.current) return;
-    if (session.busy || viewport.current?.interactionActive) {
-      session.message('请先完成当前操作，再切换显示档位。', true);
-      return;
-    }
-    const previous = displayQualityRef.current;
-    try {
-      displayQualityRef.current = next;
-      recreateViewport.current();
-      setDisplayQuality(next);
-    } catch (error) {
-      displayQualityRef.current = previous;
+  function applyRenderSettings(next: RenderSettings) {
+    if (!recreateViewport.current) throw new Error('视口尚未就绪');
+    if (
+      session.busy ||
+      viewport.current?.interactionActive ||
+      session.riverPreview ||
+      session.resizePreview ||
+      session.sitePlacement ||
+      session.movingSite
+    )
+      throw new Error('请先完成当前操作，再应用设置。');
+    const previous = renderSettingsRef.current;
+    if (JSON.stringify(next) !== JSON.stringify(previous)) {
       try {
+        renderSettingsRef.current = next;
         recreateViewport.current();
-      } catch (restoreError) {
-        setFatal(`显示档位切换后无法恢复视口：${String(restoreError)}`);
+        setRenderSettings(next);
+      } catch (error) {
+        renderSettingsRef.current = previous;
+        try {
+          recreateViewport.current();
+        } catch (restoreError) {
+          setFatal(`无法恢复视口：${String(restoreError)}`);
+        }
+        throw error;
       }
-      report(error);
-      return;
     }
     try {
       writeDisplayPreference(next);
     } catch (error) {
-      session.message(`显示档位已切换，但无法保存本机偏好：${String(error)}`, true);
+      throw new Error(`渲染设置已应用，但本机偏好保存失败：${String(error)}`);
     }
   }
   const [modal, setModal] = useState<
-      'resources' | 'details' | 'surface' | 'export' | 'new' | 'help' | null
+      'resources' | 'details' | 'surface' | 'export' | 'help' | 'surface-add' | 'settings' | null
     >(null),
     [category, setCategory] = useState<AssetKind>('tree'),
     [search, setSearch] = useState(''),
     [resourceId, setResourceId] = useState('tree-pine');
+  const [resourceTab, setResourceTab] = useState<'models' | 'textures'>('models');
+  const [textureTarget, setTextureTarget] = useState<TextureTarget | null>(null);
   const [stats, setStats] = useState({
       idle: false,
       fps: 0,
@@ -247,9 +258,6 @@ export function App({
       terrainMeshes: 1,
     }),
     [navigation, setNavigation] = useState<CameraNavigation | null>(null),
-    [newSamples, setNewSamples] = useState(513),
-    [newWidth, setNewWidth] = useState(2048),
-    [newDepth, setNewDepth] = useState(2048),
     [draftStatus, setDraftStatus] = useState('本地编辑'),
     [draft, setDraft] = useState<{ bytes: Uint8Array; date: number } | undefined>();
   const [guard, setGuard] = useState<(() => void) | null>(null),
@@ -340,68 +348,6 @@ export function App({
   }
   function report(e: unknown) {
     session.message(e instanceof Error ? e.message : String(e), true);
-  }
-  async function open() {
-    if (session.busy) return;
-    try {
-      if (desktop) {
-        session.busy = true;
-        session.notify();
-        if (await desktop.open()) viewport.current?.frameMap();
-        return;
-      }
-      const file = await selectFile('.map3d');
-      if (!file) return;
-      const candidate = decodeProject(new Uint8Array(await file.arrayBuffer()));
-      session.replace(candidate, true);
-      viewport.current?.frameMap();
-    } catch (e) {
-      report(e);
-    } finally {
-      if (desktop) {
-        session.busy = false;
-        session.notify();
-      }
-    }
-  }
-  async function backup() {
-    const bridge = window.mapEditorDesktop;
-    if (!bridge || session.busy) return;
-    try {
-      if (
-        session.riverPreview ||
-        session.sitePlacement ||
-        session.movingSite ||
-        session.resizePreview
-      )
-        throw new Error('请先确认或取消当前预览');
-      session.endStroke();
-      session.commitSurface();
-      session.busy = true;
-      session.notify();
-      if (await bridge.saveBackup(session.doc.name, encodeProject(session.doc)))
-        session.message('自包含备份已保存');
-    } catch (error) {
-      report(error);
-    } finally {
-      session.busy = false;
-      session.notify();
-    }
-  }
-  async function restore() {
-    const bridge = window.mapEditorDesktop;
-    if (!bridge || !desktop || session.busy) return;
-    try {
-      session.busy = true;
-      session.notify();
-      const bytes = await bridge.selectBackup();
-      if (bytes && (await desktop.restore(bytes))) viewport.current?.frameMap();
-    } catch (error) {
-      report(error);
-    } finally {
-      session.busy = false;
-      session.notify();
-    }
   }
   function cancelGuard() {
     if (session.busy) return;
@@ -575,7 +521,13 @@ export function App({
       const view = new EditorViewport(viewportElement.current!, session, {
         diagnosticAntialias: antialias,
         diagnosticPreviousSurface: previousSurface,
-        displayQuality: displayQualityRef.current,
+        settings: renderSettingsRef.current,
+        powerPreference:
+          window.mapEditorDesktop?.activeGpuPreference === 'integrated'
+            ? 'low-power'
+            : window.mapEditorDesktop?.activeGpuPreference === 'auto'
+              ? 'default'
+              : 'high-performance',
       });
       if (lastViewPose) view.navigation.restoreView(lastViewPose);
       view.setHostVisible(hostVisible);
@@ -731,6 +683,8 @@ export function App({
     session.selectedRiver,
   ]);
   function openResources(kind?: AssetKind) {
+    setResourceTab('models');
+    setTextureTarget(null);
     if (session.resizePreview) {
       session.message('请先确认或取消地面尺寸调整。', true);
       return;
@@ -767,6 +721,9 @@ export function App({
         </div>
         <div className="header-right">
           <span className="version-tag">本地工程 · 0.2</span>
+          <Button icon={Settings} disabled={session.busy} onClick={() => setModal('settings')}>
+            设置
+          </Button>
           <Button icon={Info} onClick={() => setModal('help')}>
             操作指南
           </Button>
@@ -775,28 +732,9 @@ export function App({
       <div className="toolbar">
         <div className="toolbar-group">
           {onHome && <Button onClick={() => uiAction(() => onHome())}>返回首页</Button>}
-          <Button
-            icon={Plus}
-            onClick={() => uiAction(() => (onHome ? onHome(true) : setModal('new')))}
-          >
-            新建
-          </Button>
-          <Button icon={FolderOpen} onClick={() => uiAction(() => void open())}>
-            打开
-          </Button>
           <Button icon={Save} onClick={() => void save()} title="Ctrl + S" disabled={session.busy}>
             保存工程
           </Button>
-          {desktop && (
-            <Button onClick={() => void backup()} disabled={session.busy}>
-              导出备份
-            </Button>
-          )}
-          {desktop && (
-            <Button onClick={() => uiAction(() => void restore())} disabled={session.busy}>
-              恢复备份
-            </Button>
-          )}
         </div>
         <div className="toolbar-group">
           <Button
@@ -878,7 +816,7 @@ export function App({
           <p className="panel-description">{activeTool.hint}</p>
           {session.tool === 'overview' && <MapOverview session={session} />}
           {(session.tool === 'terrain' || session.tool === 'surface') && (
-            <BrushPalette session={session} />
+            <BrushPalette session={session} onAdd={() => setModal('surface-add')} />
           )}
           {(session.tool === 'trees' || session.tool === 'grass') && (
             <VegetationPalette
@@ -1029,12 +967,7 @@ export function App({
           {navigation && (
             <>
               <div className="viewport-toolbar">
-                <ViewportToolbar
-                  session={session}
-                  navigation={navigation}
-                  displayQuality={displayQuality}
-                  onDisplayQuality={changeDisplayQuality}
-                />
+                <ViewportToolbar session={session} navigation={navigation} />
               </div>
               <OrientationGizmo navigation={navigation} />
             </>
@@ -1132,7 +1065,18 @@ export function App({
                         )}
                       </Group>
                       {session.tool === 'surface' && (
-                        <SurfaceInspector session={session} onLibrary={() => setModal('surface')} />
+                        <SurfaceInspector
+                          session={session}
+                          onTexture={(kind) => {
+                            setTextureTarget({
+                              layerId:
+                                session.doc.surfaceMaterial.layers[session.brush.surfaceLayer].id,
+                              kind,
+                            });
+                            setResourceTab('textures');
+                            setModal('resources');
+                          }}
+                        />
                       )}
                       {(session.tool === 'trees' || session.tool === 'grass') && (
                         <Group title="分布与避让">
@@ -1391,56 +1335,6 @@ export function App({
           </div>
         </Modal>
       )}
-      {modal === 'new' && (
-        <Modal
-          title="创建新的山河"
-          subtitle="一整片连续地面，独立的六边形逻辑网格。"
-          onClose={() => setModal(null)}
-        >
-          <div className="modal-body">
-            <label className="text-field">
-              地形采样
-              <select value={newSamples} onChange={(e) => setNewSamples(Number(e.target.value))}>
-                <option value={513}>513 × 513 · 标准</option>
-                <option value={1025}>1025 × 1025 · 高精度</option>
-              </select>
-            </label>
-            <MapDimensions
-              width={newWidth}
-              depth={newDepth}
-              onWidth={setNewWidth}
-              onDepth={setNewDepth}
-            />
-            <p className="tip">初始高度 32 米，六边形自动覆盖地面。高精度地形需要更多显存。</p>
-          </div>
-          <div className="modal-actions">
-            <Button onClick={() => setModal(null)}>取消</Button>
-            <Button
-              className="primary"
-              icon={Plus}
-              disabled={
-                ![newWidth, newDepth].every(
-                  (value) => Number.isInteger(value) && value > 0 && value <= 16384,
-                )
-              }
-              onClick={() => {
-                void (async () => {
-                  try {
-                    session.newMap(newSamples, newWidth, newDepth);
-                    await desktop?.reset();
-                    viewport.current?.frameMap();
-                    setModal(null);
-                  } catch (error) {
-                    report(error);
-                  }
-                })();
-              }}
-            >
-              创建地图
-            </Button>
-          </div>
-        </Modal>
-      )}
       {heightImport && (
         <Modal
           title="导入高度图"
@@ -1493,7 +1387,7 @@ export function App({
           </div>
         </Modal>
       )}
-      {modal === 'surface' && (
+      {(modal === 'surface' || modal === 'surface-add') && (
         <Modal
           title="地表材质"
           className="surface-dialog"
@@ -1502,6 +1396,7 @@ export function App({
           }}
         >
           <SurfaceLibrary
+            adding={modal === 'surface-add'}
             session={session}
             onClose={() => {
               if (!session.busy) setModal(null);
@@ -1517,119 +1412,146 @@ export function App({
       {modal === 'resources' && (
         <Modal
           wide
-          title="模型资源库"
-          subtitle="模型随工程保存。为山河选择合适的城池、要塞与植被。"
+          title="资源库"
+          subtitle="管理当前工程的模型与贴图资源。"
           onClose={() => setModal(null)}
         >
-          <div className="resource-layout">
-            <nav className="resource-nav">
-              {(Object.keys(KIND_LABEL) as AssetKind[]).map((kind) => (
-                <Button
-                  key={kind}
-                  active={category === kind}
-                  icon={KIND_ICON[kind]}
-                  onClick={() => {
-                    setCategory(kind);
-                    setResourceId(doc.assets.find((a) => a.kind === kind)?.id ?? '');
-                  }}
-                >
-                  {KIND_LABEL[kind]}
-                  <small>{doc.assets.filter((a) => a.kind === kind).length}</small>
-                </Button>
-              ))}
-              <Button
-                icon={Plus}
-                className="full"
-                onClick={() => void importModel(category)}
-                disabled={session.busy}
-              >
-                导入静态 GLB
-              </Button>
-            </nav>
-            <div className="resource-center">
-              <label className="search-box">
-                <Search size={16} />
-                <input
-                  placeholder="搜索模型名称"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </label>
-              <div className="resource-grid">
-                {doc.assets
-                  .filter((a) => a.kind === category && a.name.includes(search))
-                  .map((a) => (
-                    <button
-                      key={a.id}
-                      className={`resource-card ${a.id === resourceId ? 'selected' : ''}`}
-                      onClick={() => setResourceId(a.id)}
-                    >
-                      <div className={`asset-art ${a.kind}`}>
-                        <KindIcon kind={a.kind} size={60} />
-                        {a.id === resourceId && (
-                          <span className="resource-check">
-                            <Check size={13} />
-                          </span>
-                        )}
-                      </div>
-                      <strong>{a.name}</strong>
-                      <small>
-                        {isBuiltinAsset(a) ? '内置 GLB' : '自定义 GLB'} ·{' '}
-                        {referenceCounts.get(a.id) ?? 0} 处引用
-                      </small>
-                    </button>
-                  ))}
-              </div>
-            </div>
-            <div className="resource-detail">
-              {resource && (
-                <>
-                  <ModelDetails
-                    session={session}
-                    resource={resource}
-                    onDeleted={() =>
-                      setResourceId(doc.assets.find((asset) => asset.kind === category)?.id ?? '')
-                    }
-                  />
+          <div className="resource-tabs" role="tablist" aria-label="资源类型">
+            <button
+              role="tab"
+              aria-selected={resourceTab === 'models'}
+              onClick={() => {
+                setResourceTab('models');
+                setTextureTarget(null);
+              }}
+            >
+              模型
+            </button>
+            <button
+              role="tab"
+              aria-selected={resourceTab === 'textures'}
+              onClick={() => setResourceTab('textures')}
+            >
+              贴图
+            </button>
+          </div>
+          {resourceTab === 'textures' ? (
+            <TextureLibrary
+              session={session}
+              target={textureTarget}
+              onClose={() => setModal(null)}
+            />
+          ) : (
+            <div className="resource-layout">
+              <nav className="resource-nav">
+                {(Object.keys(KIND_LABEL) as AssetKind[]).map((kind) => (
                   <Button
-                    className="primary full"
+                    key={kind}
+                    active={category === kind}
+                    icon={KIND_ICON[kind]}
                     onClick={() => {
-                      session.setAsset(resource.id);
-                      setModal(null);
+                      setCategory(kind);
+                      setResourceId(doc.assets.find((a) => a.kind === kind)?.id ?? '');
                     }}
                   >
-                    用于当前工具
+                    {KIND_LABEL[kind]}
+                    <small>{doc.assets.filter((a) => a.kind === kind).length}</small>
                   </Button>
-                  {((site && site.kind === resource.kind) ||
-                    (tree && resource.kind === 'tree')) && (
+                ))}
+                <Button
+                  icon={Plus}
+                  className="full"
+                  onClick={() => void importModel(category)}
+                  disabled={session.busy}
+                >
+                  导入静态 GLB
+                </Button>
+              </nav>
+              <div className="resource-center">
+                <label className="search-box">
+                  <Search size={16} />
+                  <input
+                    placeholder="搜索模型名称"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
+                <div className="resource-grid">
+                  {doc.assets
+                    .filter((a) => a.kind === category && a.name.includes(search))
+                    .map((a) => (
+                      <button
+                        key={a.id}
+                        className={`resource-card ${a.id === resourceId ? 'selected' : ''}`}
+                        onClick={() => setResourceId(a.id)}
+                      >
+                        <div className={`asset-art ${a.kind}`}>
+                          <KindIcon kind={a.kind} size={60} />
+                          {a.id === resourceId && (
+                            <span className="resource-check">
+                              <Check size={13} />
+                            </span>
+                          )}
+                        </div>
+                        <strong>{a.name}</strong>
+                        <small>
+                          {isBuiltinAsset(a) ? '内置 GLB' : '自定义 GLB'} ·{' '}
+                          {referenceCounts.get(a.id) ?? 0} 处引用
+                        </small>
+                      </button>
+                    ))}
+                </div>
+              </div>
+              <div className="resource-detail">
+                {resource && (
+                  <>
+                    <ModelDetails
+                      session={session}
+                      resource={resource}
+                      onDeleted={() =>
+                        setResourceId(doc.assets.find((asset) => asset.kind === category)?.id ?? '')
+                      }
+                    />
                     <Button
-                      className="full"
+                      className="primary full"
                       onClick={() => {
-                        session.replaceModel(resource.id);
+                        session.setAsset(resource.id);
                         setModal(null);
                       }}
                     >
-                      替换当前选中对象模型
+                      用于当前工具
                     </Button>
-                  )}
-                  {tree && resource.kind === 'tree' && (
-                    <Button
-                      className="full"
-                      onClick={() => {
-                        const count = doc.trees.filter((t) => t.assetId === tree.assetId).length;
-                        if (window.confirm(`将 ${count} 株同模型树木替换为 ${resource.name}？`)) {
-                          session.replaceModel(resource.id, true);
+                    {((site && site.kind === resource.kind) ||
+                      (tree && resource.kind === 'tree')) && (
+                      <Button
+                        className="full"
+                        onClick={() => {
+                          session.replaceModel(resource.id);
                           setModal(null);
-                        }
-                      }}
-                    >
-                      批量替换同模型树木
-                    </Button>
-                  )}
-                </>
-              )}
+                        }}
+                      >
+                        替换当前选中对象模型
+                      </Button>
+                    )}
+                    {tree && resource.kind === 'tree' && (
+                      <Button
+                        className="full"
+                        onClick={() => {
+                          const count = doc.trees.filter((t) => t.assetId === tree.assetId).length;
+                          if (window.confirm(`将 ${count} 株同模型树木替换为 ${resource.name}？`)) {
+                            session.replaceModel(resource.id, true);
+                            setModal(null);
+                          }
+                        }}
+                      >
+                        批量替换同模型树木
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </Modal>
       )}
       {importDraft && (
@@ -1741,6 +1663,24 @@ export function App({
               {session.busy ? '正在生成资源包…' : '生成并下载'}
             </Button>
           </div>
+        </Modal>
+      )}
+      {modal === 'settings' && (
+        <Modal title="设置" subtitle="本机渲染性能与显卡偏好" onClose={() => setModal(null)}>
+          <RenderSettingsForm
+            settings={renderSettings}
+            blocked={
+              !!(
+                session.busy ||
+                session.riverPreview ||
+                session.resizePreview ||
+                session.sitePlacement ||
+                session.movingSite
+              )
+            }
+            onApply={applyRenderSettings}
+            onClose={() => setModal(null)}
+          />
         </Modal>
       )}
       {modal === 'help' && (

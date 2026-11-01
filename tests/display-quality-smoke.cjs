@@ -85,6 +85,19 @@ const assert = require('node:assert/strict');
           { timeout: 180000 },
         );
       let page = await launch();
+      const readQuality = async () => {
+        await page.getByRole('button', { name: '设置', exact: true }).click();
+        const value = await page.getByLabel('显示档位', { exact: true }).inputValue();
+        await page.getByRole('button', { name: '取消', exact: true }).click();
+        return value;
+      };
+      const selectQuality = async (quality) => {
+        await page.getByRole('button', { name: '设置', exact: true }).click();
+        await page.getByLabel('显示档位', { exact: true }).selectOption(quality);
+        await page.getByRole('button', { name: '应用', exact: true }).click();
+        await page.getByRole('dialog', { name: '设置', exact: true }).waitFor({ state: 'hidden' });
+      };
+
       console.log(`Windows scale ${scale}: 创建测试工程`);
       await page.getByRole('button', { name: '创建工程', exact: true }).click();
       await page.getByLabel('工程名称').fill('scale-' + scale);
@@ -92,7 +105,7 @@ const assert = require('node:assert/strict');
       if (scale === 1.25) await page.getByLabel('导入示例工程').check();
       await page.getByRole('button', { name: '创建工程', exact: true }).click();
       await ready(page);
-      assert.equal(await page.getByLabel('显示档位', { exact: true }).inputValue(), 'fast');
+      assert.equal(await readQuality(), 'fast');
       if (scale === 1.25) {
         await page.locator('.left-panel .object-row').filter({ hasText: '临江城' }).click();
         for (const name of ['档位测试城一', '档位测试城二']) {
@@ -118,7 +131,7 @@ const assert = require('node:assert/strict');
             const canvas = document.querySelector('[data-testid="map-canvas"]');
             window.qualityOldGl = canvas.getContext('webgl2');
           });
-          await page.getByLabel('显示档位', { exact: true }).selectOption(quality);
+          await selectQuality(quality);
           await ready(page);
           await page.waitForFunction(() => window.qualityOldGl.isContextLost());
           const snap = await page.evaluate(() => window.mapEditorPerformance.snapshot());
@@ -160,11 +173,6 @@ const assert = require('node:assert/strict');
           assert.ok(
             (await page.evaluate(() => window.qualityActiveWorkers.size)) <= 1,
             '切档必须终止旧草计算线程',
-          );
-          const toolbar = await page.locator('.viewport-toolbar').boundingBox();
-          const select = await page.getByLabel('显示档位', { exact: true }).boundingBox();
-          assert.ok(
-            select.x >= toolbar.x && select.x + select.width <= toolbar.x + toolbar.width + 1,
           );
           report.results.push({
             scale,
@@ -211,14 +219,14 @@ const assert = require('node:assert/strict');
         '大窗口流畅档必须限制实际像素量',
       );
       report.results.push({ scale, largeViewport: large.viewport });
-      await page.getByLabel('显示档位', { exact: true }).selectOption('balanced');
+      await selectQuality('balanced');
       await ready(page);
       // 强制关闭只针对本工具生成的临时工程，验证偏好独立于保存状态持久化。
       await stop();
       page = await launch();
       await page.locator('.home-project').first().click();
       await ready(page);
-      assert.equal(await page.getByLabel('显示档位', { exact: true }).inputValue(), 'balanced');
+      assert.equal(await readQuality(), 'balanced');
       await stop();
       console.log(
         `Windows scale ${scale}: 切档、投影、数据历史、拾取、资源释放、单循环及重启偏好通过`,

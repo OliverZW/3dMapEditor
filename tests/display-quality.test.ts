@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { displayPixelRatio } from '../src/renderer/display-quality';
+import { displayPixelRatio, presetSettings } from '../src/renderer/display-quality';
 import { readDisplayPreference, writeDisplayPreference } from '../src/platform/display-preference';
 import { CameraRig } from '../src/renderer/camera-rig';
 
@@ -29,9 +29,9 @@ describe('本机显示档位', () => {
         value = next;
       },
     };
-    expect(readDisplayPreference(storage)).toEqual({ quality: 'fast' });
+    expect(readDisplayPreference(storage)).toEqual(presetSettings('fast'));
     writeDisplayPreference('balanced', storage);
-    expect(readDisplayPreference(storage)).toEqual({ quality: 'balanced' });
+    expect(readDisplayPreference(storage)).toEqual(presetSettings('balanced'));
     value = 'unknown';
     expect(readDisplayPreference(storage).warning).toContain('无效');
     const unavailable = {
@@ -45,6 +45,73 @@ describe('本机显示档位', () => {
     expect(readDisplayPreference(unavailable).quality).toBe('fast');
     expect(readDisplayPreference(unavailable).warning).toContain('blocked');
     expect(() => writeDisplayPreference('high', unavailable)).toThrow('quota');
+  });
+  it('迁移旧画质记录，自定义开关独立保存且损坏记录回退', () => {
+    const values = new Map<string, string>([['shanhe.display-quality.v1', 'high']]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+    };
+    expect(readDisplayPreference(storage)).toEqual(presetSettings('high'));
+    const custom = {
+      ...presetSettings('balanced'),
+      demandRendering: false,
+      simplifiedSurface: true,
+      antialias: true,
+    };
+    writeDisplayPreference(custom, storage);
+    expect(readDisplayPreference(storage)).toEqual(custom);
+    values.set('shanhe.render-settings.v2', '{"quality":"high","shadows":"true"}');
+    expect(readDisplayPreference(storage)).toMatchObject({
+      ...presetSettings('fast'),
+      warning: expect.any(String),
+    });
+  });
+  it('旧渲染设置补齐光照字段，保留自定义开关，阴影设置可往返', () => {
+    for (const quality of ['fast', 'balanced', 'high'] as const) {
+      const old = {
+        quality,
+        shadows: true,
+        antialias: true,
+        simplifiedSurface: false,
+        demandRendering: false,
+      };
+      let raw = JSON.stringify(old);
+      const storage = {
+        getItem: () => raw,
+        setItem: (_key: string, value: string) => {
+          raw = value;
+        },
+      };
+      expect(readDisplayPreference(storage)).toEqual({
+        ...old,
+        shadowSize: quality === 'high' ? 2048 : 1024,
+        treeShadows: true,
+      });
+      for (const shadowSize of [512, 1024, 2048] as const) {
+        const custom = {
+          ...presetSettings(quality),
+          shadows: false,
+          shadowSize,
+          treeShadows: false,
+        };
+        writeDisplayPreference(custom, storage);
+        expect(readDisplayPreference(storage)).toEqual(custom);
+      }
+      for (const invalid of [
+        { shadowSize: 4096 },
+        { treeShadows: 'false' },
+        { shadowSize: null },
+      ]) {
+        raw = JSON.stringify({ ...old, ...invalid });
+        expect(readDisplayPreference(storage)).toMatchObject({
+          ...presetSettings('fast'),
+          warning: expect.any(String),
+        });
+      }
+    }
   });
   it('切换视口后恢复透视／正交、姿态、目标与缩放，并保持快照独立', () => {
     for (const orthographic of [false, true]) {

@@ -1,6 +1,20 @@
 import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { CircleHelp } from 'lucide-react';
+export function HelpTip({ label, text }: { label: string; text: string }) {
+  return (
+    <button
+      type="button"
+      className="help-tip"
+      title={text}
+      aria-label={`${label}说明`}
+      onClick={(event) => event.preventDefault()}
+    >
+      <CircleHelp size={14} />
+    </button>
+  );
+}
 export function Button({
   children,
   icon: Icon,
@@ -9,6 +23,7 @@ export function Button({
   disabled = false,
   title = '',
   className = '',
+  'aria-label': ariaLabel,
 }: {
   children?: ReactNode;
   icon?: LucideIcon;
@@ -17,10 +32,12 @@ export function Button({
   disabled?: boolean;
   title?: string;
   className?: string;
+  'aria-label'?: string;
 }) {
   return (
     <button
       title={title}
+      aria-label={ariaLabel}
       disabled={disabled}
       aria-pressed={active}
       onClick={onClick}
@@ -52,6 +69,7 @@ export function Group({
 }
 export function Slider({
   label,
+  hint,
   value,
   min,
   max,
@@ -62,6 +80,7 @@ export function Slider({
   onCancel,
 }: {
   label: string;
+  hint?: string;
   value: number;
   min: number;
   max: number;
@@ -73,9 +92,12 @@ export function Slider({
 }) {
   const dragging = useRef(false);
   return (
-    <label className="slider-field">
+    <div className="slider-field">
       <span>
-        {label}
+        <span className="setting-label">
+          {label}
+          {hint && <HelpTip label={label} text={hint} />}
+        </span>
         <b>
           {Number(value.toFixed(2))}
           <em>{unit}</em>
@@ -131,7 +153,7 @@ export function Slider({
           }
         }}
       />
-    </label>
+    </div>
   );
 }
 export function NumberField({

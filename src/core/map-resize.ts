@@ -112,20 +112,23 @@ export function prepareResize(source: MapDocument, width: number, depth: number)
       const indices = u + v <= 1 ? [a, a + 1, a + n] : [a + n + 1, a + n, a + 1];
       const weights = u + v <= 1 ? [1 - u - v, u, v] : [u + v - 1, 1 - u, 1 - v];
       let sum = 0;
-      for (let channel = 0; channel < 4; channel++) {
+      for (let channel = 0; channel < source.surfaceMaterial.layers.length; channel++) {
         const value =
-          channel < 3
+          channel < source.surfaceMaterial.layers.length - 1
             ? Math.min(
                 255 - sum,
                 Math.round(
                   indices.reduce(
-                    (total, index, k) => total + source.surface[index * 4 + channel] * weights[k],
+                    (total, index, k) =>
+                      total +
+                      source.surface[index * source.surfaceMaterial.layers.length + channel] *
+                        weights[k],
                     0,
                   ),
                 ),
               )
             : 255 - sum;
-        doc.surface[i * 4 + channel] = value;
+        doc.surface[i * source.surfaceMaterial.layers.length + channel] = value;
         sum += value;
       }
       doc.grass.forEach((layer, k) => {

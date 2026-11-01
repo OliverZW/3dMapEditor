@@ -9,13 +9,13 @@ import {
 } from './project-codec';
 
 export { floatBytes, uintBytes } from './project-binary';
-/** v4 的数据文件与目录工程共用；manifest 是独立的备份契约。 */
+/** v5 的数据文件与目录工程共用；manifest 是独立的备份契约。 */
 export function encodeProject(doc: MapDocument): Uint8Array {
   if (!doc.name.trim() || doc.name !== doc.name.trim() || doc.name.length > 128)
     throw new Error('工程名称无效');
   const files = encodeProjectFiles(snapshot(doc), true);
   files['manifest.json'] = strToU8(
-    JSON.stringify({ format: 'map3d-backup', formatVersion: 4, name: doc.name }),
+    JSON.stringify({ format: 'map3d-backup', formatVersion: 5, name: doc.name }),
   );
   const bytes = zipSync(files, { level: 6 });
   if (bytes.length > 256 * 1024 * 1024) throw new Error('工程包超过 256 MiB');
@@ -43,11 +43,12 @@ export function decodeProject(bytes: Uint8Array): MapDocument {
     !manifest ||
     typeof manifest !== 'object' ||
     !('formatVersion' in manifest) ||
-    manifest.formatVersion !== 4 ||
+    typeof manifest.formatVersion !== 'number' ||
+    ![4, 5].includes(manifest.formatVersion) ||
     !('format' in manifest) ||
     manifest.format !== 'map3d-backup'
   )
-    throw new Error('不支持的工程版本：仅接受 v4 备份，不兼容旧版 .map3d');
+    throw new Error('不支持的工程版本：仅接受 v4/v5 备份，不兼容旧版 .map3d');
   if (!('name' in manifest) || typeof manifest.name !== 'string') throw new Error('工程名称无效');
   return decodeProjectFiles(files, manifest.name, true);
 }

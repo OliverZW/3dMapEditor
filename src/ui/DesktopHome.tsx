@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FolderOpen, History, Plus } from 'lucide-react';
+import { FolderOpen, Plus } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
 import { createDocument } from '../core/document';
 import { DesktopProjectSession } from '../application/desktop-project-session';
@@ -85,9 +85,9 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
       <App
         initialSession={session}
         initialDesktop={desktop}
-        onHome={(create) => {
+        onHome={() => {
           setEditing(false);
-          setCreating(!!create);
+          setCreating(false);
         }}
       />
     );
@@ -220,25 +220,6 @@ export function DesktopHome({ bridge }: { bridge: DesktopBridge }) {
                 <span className="home-shortcut-copy">
                   <strong>打开工程</strong>
                   <small>打开本地工程</small>
-                </span>
-              </button>
-              <button
-                className="home-shortcut"
-                aria-label="恢复备份"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    const backup = await bridge.selectBackup();
-                    return backup ? desktop.restore(backup) : false;
-                  })
-                }
-              >
-                <span className="home-shortcut-icon">
-                  <History size={24} />
-                </span>
-                <span className="home-shortcut-copy">
-                  <strong>恢复备份</strong>
-                  <small>从备份中恢复工程</small>
                 </span>
               </button>
             </nav>

@@ -95,21 +95,34 @@ export function applyTerrainBrush(
 export function applySurfaceBrush(doc: MapDocument, point: Point, brush: BrushSettings): void {
   forBrush(doc, point, brush.radius, (i, d) => {
     const w = (1 - d / brush.radius) * brush.strength;
-    const values = [0, 1, 2, 3].map(
-      (c) => doc.surface[i * 4 + c] * (1 - w) + (c === brush.surfaceLayer ? 255 * w : 0),
-    );
-    let total = 0;
-    for (let c = 0; c < 3; c++) {
-      doc.surface[i * 4 + c] = Math.round(values[c]);
-      total += doc.surface[i * 4 + c];
-    }
-    if (total > 255) {
-      const channel = values.indexOf(Math.max(...values.slice(0, 3)));
-      doc.surface[i * 4 + channel] -= total - 255;
-      total = 255;
-    }
-    doc.surface[i * 4 + 3] = 255 - total;
+    const channels = doc.surfaceMaterial.layers.length;
+    blendSurfaceWeights(doc.surface, i * channels, channels, brush.surfaceLayer, w);
   });
+}
+
+/** 用统一量化方式混合任意通道数，保证同一采样点的权重总和为 255。 */
+export function blendSurfaceWeights(
+  surface: Uint8Array,
+  offset: number,
+  channels: number,
+  target: number,
+  strength: number,
+): void {
+  const values = Array.from(
+    { length: channels },
+    (_, c) => surface[offset + c] * (1 - strength) + (c === target ? 255 * strength : 0),
+  );
+  let total = 0;
+  for (let c = 0; c < channels - 1; c++) {
+    surface[offset + c] = Math.round(values[c]);
+    total += surface[offset + c];
+  }
+  if (total > 255) {
+    const channel = values.indexOf(Math.max(...values.slice(0, channels - 1)));
+    surface[offset + channel] -= total - 255;
+    total = 255;
+  }
+  surface[offset + channels - 1] = 255 - total;
 }
 export function interpolateStroke(from: Point, to: Point, spacing: number): Point[] {
   const length = Math.hypot(to.x - from.x, to.z - from.z),

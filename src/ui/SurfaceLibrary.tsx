@@ -4,15 +4,16 @@ import type { SurfaceAsset } from '../core/types';
 import { defaultSurfaceMaterial } from '../core/surface-material';
 import { surfaceImageBytes } from '../io/surface-resources';
 import { importSurfaceAsset } from '../io/surface-import';
+import { addSurfaceLayer } from '../core/surface-layers';
 import { Button } from './controls';
-
-const layerNames = ['草地', '泥土', '岩石', '沙地'];
 
 export function SurfaceLibrary({
   session,
   onClose,
+  adding = false,
 }: {
   session: EditorSession;
+  adding?: boolean;
   onClose: () => void;
 }) {
   const index = session.brush.surfaceLayer;
@@ -21,7 +22,16 @@ export function SurfaceLibrary({
     ...item,
     id: `builtin:${item.id}`,
   }));
-  const [selected, setSelected] = useState(layer.materialId ?? `builtin:${layer.id}`);
+  const [selected, setSelected] = useState(
+    layer.materialId ??
+      builtins.find(
+        (item) =>
+          item.color.hash === layer.color.hash &&
+          item.normal.hash === layer.normal.hash &&
+          item.meters === layer.meters,
+      )?.id ??
+      `current:${layer.id}`,
+  );
   const [draft, setDraft] = useState<SurfaceAsset | null>(null);
   const [name, setName] = useState('');
   const [meters, setMeters] = useState('16');
@@ -37,10 +47,14 @@ export function SurfaceLibrary({
     },
     [],
   );
-  const items = [...builtins, ...(session.doc.surfaceMaterial.library ?? [])];
+  const items = [
+    ...builtins,
+    ...(session.doc.surfaceMaterial.library ?? []),
+    { ...layer, id: `current:${layer.id}`, name: layer.name + '（当前贴图）' },
+  ];
   const current = draft ?? items.find((item) => item.id === selected);
   useEffect(() => {
-    if (current) session.previewSurfaceLayer(index, current);
+    if (current && !adding) session.previewSurfaceLayer(index, current);
     return () => session.cancelSurfaceLayer();
   }, [session, index, current?.id, current?.color.hash, current?.normal.hash, current?.meters]);
   useEffect(() => {
@@ -83,26 +97,38 @@ export function SurfaceLibrary({
   }
   function apply() {
     if (!current) return;
-    session.change('替换地表材质', (doc) => {
+    session.change(adding ? '添加地表' : '替换地表材质', (doc) => {
+      if (adding) {
+        addSurfaceLayer(
+          doc,
+          { ...current, name: name.trim() || current.name },
+          `layer-${crypto.randomUUID()}`,
+        );
+        return;
+      }
       const pack = doc.surfaceMaterial;
       if (draft) pack.library = [...(pack.library ?? []), draft];
       const target = pack.layers[index];
       pack.layers[index] = {
         ...target,
-        name: current.name,
         meters: current.meters,
         color: { ...current.color },
         normal: { ...current.normal },
-        materialId: current.id.startsWith('builtin:') ? undefined : current.id,
+        materialId: current.id.startsWith('surface-') ? current.id : undefined,
       };
     });
-    if (!session.error) onClose();
-    else setError(session.error);
+    if (!session.error) {
+      if (adding) {
+        session.brush.surfaceLayer = session.doc.surfaceMaterial.layers.length - 1;
+        session.notify();
+      }
+      onClose();
+    } else setError(session.error);
   }
   function remove() {
-    if (!current || current.id.startsWith('builtin:') || draft) return;
-    const locations = session.doc.surfaceMaterial.layers.flatMap((item, i) =>
-      item.materialId === current.id ? [layerNames[i]] : [],
+    if (!current || !current.id.startsWith('surface-') || draft) return;
+    const locations = session.doc.surfaceMaterial.layers.flatMap((item) =>
+      item.materialId === current.id ? [item.name] : [],
     );
     if (locations.length) {
       setError(`材质正在使用：${locations.join('、')}，请先替换这些层。`);
@@ -122,7 +148,7 @@ export function SurfaceLibrary({
   return (
     <div className="surface-library modal-body">
       <p>
-        当前图层：{layerNames[index]}
+        {adding ? '添加新地表' : `当前图层：${layer.name}`}
         。选择时预览地图，确认后应用；取消将还原，已有涂刷权重保持不变。
       </p>
       <label>
@@ -156,7 +182,7 @@ export function SurfaceLibrary({
             <p>
               使用位置：
               {session.doc.surfaceMaterial.layers
-                .flatMap((item, i) => (item.materialId === current.id ? [layerNames[i]] : []))
+                .flatMap((item) => (item.materialId === current.id ? [item.name] : []))
                 .join('、') || '无'}
             </p>
           </div>
@@ -226,7 +252,7 @@ export function SurfaceLibrary({
       <div className="modal-actions">
         <Button
           onClick={remove}
-          disabled={working || !current || current.id.startsWith('builtin:') || !!draft}
+          disabled={working || !current || !current.id.startsWith('surface-') || !!draft}
         >
           删除材质
         </Button>

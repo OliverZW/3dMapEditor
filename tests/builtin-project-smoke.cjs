@@ -119,7 +119,7 @@ const assert = require('node:assert/strict');
     await page.getByRole('button', { name: '打开', exact: true }).click();
     await (await chooser).setFiles(projectPath);
     await page.getByRole('button', { name: /资源库 8/ }).click();
-    const modal = page.getByRole('dialog', { name: '模型资源库', exact: true });
+    const modal = page.getByRole('dialog', { name: '资源库', exact: true });
     for (const kind of ['城池', '要塞', '树木', '草丛']) {
       await modal
         .locator('.resource-nav')

@@ -35,6 +35,11 @@ const referenceSources = import.meta.glob(
 
 export function preflightCocos(doc: MapDocument): string[] {
   validateDocument(doc);
+  if (
+    doc.surfaceMaterial.layers.length !== 4 ||
+    doc.surfaceMaterial.layers.some((layer, i) => layer.id !== ['grass', 'soil', 'rock', 'sand'][i])
+  )
+    return ['当前 Cocos 导出仅支持原四层地表，请保存工程保留自定义地表。'];
   return [
     `协议 v2：${doc.settings.samples}² 单片地形、最终高度、PNG16 和四通道地表权重。`,
     `树木 ${doc.trees.length} 株、草层 ${doc.grass.length} 个、据点 ${doc.sites.length} 座、势力 ${doc.factions.length} 个；按所选内容导出。`,
@@ -55,6 +60,11 @@ async function run(snapshot: ExportSnapshot, input: ExportOptions) {
     heights = snapshot.finalHeights,
     n = doc.settings.samples;
   validateDocument(doc);
+  if (
+    doc.surfaceMaterial.layers.length !== 4 ||
+    doc.surfaceMaterial.layers.some((layer, i) => layer.id !== ['grass', 'soil', 'rock', 'sand'][i])
+  )
+    throw new Error('当前导出仅支持原四层地表，请使用工程保存保留自定义地表。');
   const files = new EngineFiles();
   const positions = new Float32Array(n * n * 3),
     colors = new Float32Array(n * n * 3),

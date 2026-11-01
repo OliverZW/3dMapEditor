@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { MapDocument, SurfaceImage, SurfaceMaterialPack } from '../core/types';
 import { surfaceImageBytes } from '../io/surface-resources';
+import { multiSurfaceShader } from './multi-surface-shader';
 import { surfaceShader } from './surface-shader';
 import { simpleSurfaceShader } from './simple-surface-shader';
 import { acquireSurfaceMacro } from './surface-macro';
@@ -75,6 +76,15 @@ export class SurfaceMaterial {
   readonly material: THREE.MeshStandardMaterial | THREE.MeshLambertMaterial;
   readonly regions = new SurfaceRegions();
   private pool: SurfaceTexturePool;
+  private packedFallback = new THREE.DataArrayTexture(
+    new Uint8Array([113, 131, 90, 255, 128, 128, 255, 255]),
+    1,
+    1,
+    2,
+  );
+  private dynamic = false;
+  private atlases: THREE.Texture[] = [];
+  private extraWeight = new THREE.DataTexture(new Uint8Array(4), 1, 1);
   private weight = new THREE.DataTexture(new Uint8Array([255, 0, 0, 0]), 1, 1);
   private fallback: THREE.DataTexture[] = [];
   private leases: TextureLease[] = [];
@@ -109,6 +119,8 @@ export class SurfaceMaterial {
     this.weight.flipY = false;
     this.uniforms = {
       uSurfaceWeights: { value: this.weight },
+      uSurfaceWeightsExtra: { value: this.extraWeight },
+      uSurfaceRock: { value: 2 },
       uSurfaceRegions: { value: this.regions.texture },
       uSurfaceRegionSize: { value: 1 },
       uSurfaceSize: { value: new THREE.Vector2(2048, 2048) },
@@ -116,6 +128,7 @@ export class SurfaceMaterial {
       uSurfaceMeters: { value: new THREE.Vector4(16, 16, 32, 24) },
       uSurfaceScale: { value: 1 },
       uSurfaceDetail: { value: 0.25 },
+      uSurfaceDetails: { value: new THREE.Vector4(1, 1, 1, 1) },
       uSurfaceSlope: { value: 1 },
     };
     if (display.simplifiedSurface) {
@@ -128,9 +141,9 @@ export class SurfaceMaterial {
       [136, 145, 138],
       [194, 177, 130],
     ];
-    for (let i = 0; i < 4; i++) {
-      for (const kind of display.simplifiedSurface ? ['Color'] : ['Color', 'Normal']) {
-        const pixel = kind === 'Color' ? colors[i] : [128, 128, 255];
+    for (let i = 0; i < 8; i++) {
+      for (const kind of ['Color', 'Normal']) {
+        const pixel = kind === 'Color' ? colors[i % 4] : [128, 128, 255];
         const texture = new THREE.DataTexture(new Uint8Array([...pixel, 255]), 1, 1);
         texture.colorSpace = kind === 'Color' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
         texture.needsUpdate = true;
@@ -138,10 +151,20 @@ export class SurfaceMaterial {
         this.uniforms[`uSurface${kind}${i}`] = { value: texture };
       }
     }
-    const { declarations, color, normal } = display.simplifiedSurface
+    const legacy = display.simplifiedSurface
       ? simpleSurfaceShader
       : surfaceShader(!original, sharedGradients);
+    this.packedFallback.needsUpdate = true;
+    for (let i = 0; i < 8; i++) {
+      this.uniforms[`uSurfacePacked${i}`] = { value: this.packedFallback };
+      this.uniforms[`uSurfaceLayerMeters${i}`] = { value: 16 };
+      this.uniforms[`uSurfaceLayerDetail${i}`] = { value: 1 };
+      this.uniforms[`uSurfaceTint${i}`] = { value: new THREE.Vector4(1, 1, 1, 1) };
+    }
     this.material.onBeforeCompile = (shader) => {
+      const { declarations, color, normal } = this.dynamic
+        ? multiSurfaceShader(!!display.simplifiedSurface)
+        : legacy;
       Object.assign(shader.uniforms, this.uniforms);
       shader.vertexShader = shader.vertexShader
         .replace(
@@ -156,35 +179,64 @@ export class SurfaceMaterial {
         .replace('#include <common>', '#include <common>\n' + declarations)
         .replace('#include <color_fragment>', color)
         .replace('#include <normal_fragment_maps>', normal);
-      this.cache?.install(shader);
+      if (!this.dynamic) this.cache?.install(shader);
     };
     this.material.customProgramCacheKey = () =>
-      display.simplifiedSurface
-        ? 'surface-simple-xz-v1'
-        : original
-          ? 'surface-original-v2'
-          : sharedGradients
-            ? 'surface-shared-gradients-v1'
-            : 'surface-exact-v3';
+      this.dynamic
+        ? 'surface-multi-v1-' + !!display.simplifiedSurface
+        : display.simplifiedSurface
+          ? 'surface-simple-xz-v1'
+          : original
+            ? 'surface-original-v2'
+            : sharedGradients
+              ? 'surface-shared-gradients-v1'
+              : 'surface-exact-v3';
   }
   useCache(cache: SurfacePageCache) {
     this.cache = cache;
-    this.material.customProgramCacheKey = () => 'surface-page-cache-v2';
+    this.material.customProgramCacheKey = () => 'surface-page-cache-v2-' + this.dynamic;
     this.material.needsUpdate = true;
   }
+  private updateMode(doc: MapDocument) {
+    const dynamic =
+      doc.surfaceMaterial.layers.length !== 4 ||
+      doc.surfaceMaterial.layers.some(
+        (layer, i) => layer.id !== ['grass', 'soil', 'rock', 'sand'][i],
+      ) ||
+      !!doc.surfaceMaterial.slopeLayerId;
+    if (dynamic !== this.dynamic) {
+      this.dynamic = dynamic;
+      this.material.needsUpdate = true;
+    }
+  }
   update(doc: MapDocument, bounds?: RenderBounds) {
-    if (!this.display.simplifiedSurface) this.regions.update(doc, bounds);
+    this.updateMode(doc);
+    if (!this.display.simplifiedSurface && !this.dynamic) this.regions.update(doc, bounds);
     this.uniforms.uSurfaceRegions.value = this.regions.texture;
     this.uniforms.uSurfaceRegionSize.value = this.regions.size;
     const n = doc.settings.samples;
+    const count = doc.surfaceMaterial.layers.length;
+    const first = count === 4 ? doc.surface : new Uint8Array(n * n * 4);
+    const extra = new Uint8Array(n * n * 4);
+    if (count !== 4)
+      for (let i = 0; i < n * n; i++)
+        for (let c = 0; c < count; c++)
+          (c < 4 ? first : extra)[i * 4 + (c % 4)] = doc.surface[i * count + c];
+    this.extraWeight.dispose();
+    this.extraWeight = new THREE.DataTexture(extra, n, n);
+    this.extraWeight.magFilter = this.extraWeight.minFilter = THREE.LinearFilter;
+    this.extraWeight.generateMipmaps = false;
+    this.extraWeight.flipY = false;
+    this.extraWeight.needsUpdate = true;
+    this.uniforms.uSurfaceWeightsExtra.value = this.extraWeight;
     if (this.weight.image.width !== n) {
       this.weight.dispose();
-      this.weight = new THREE.DataTexture(doc.surface, n, n);
+      this.weight = new THREE.DataTexture(first, n, n);
       this.weight.magFilter = this.weight.minFilter = THREE.LinearFilter;
       this.weight.generateMipmaps = false;
       this.weight.flipY = false;
       this.uniforms.uSurfaceWeights.value = this.weight;
-    } else this.weight.image.data = doc.surface;
+    } else this.weight.image.data = first;
     this.weight.needsUpdate = true;
     (this.uniforms.uSurfaceSize.value as THREE.Vector2).set(doc.settings.width, doc.settings.depth);
     this.uniforms.uSurfaceSamples.value = n;
@@ -194,13 +246,40 @@ export class SurfaceMaterial {
     this.updateResources(doc);
   }
   updateResources(doc: MapDocument) {
+    this.updateMode(doc);
+
     (this.uniforms.uSurfaceMeters.value as THREE.Vector4).fromArray(
       doc.surfaceMaterial.layers.map((layer) => layer.meters),
     );
+    this.uniforms.uSurfaceRock.value = Math.max(
+      0,
+      doc.surfaceMaterial.layers.findIndex(
+        (layer) => layer.id === (doc.surfaceMaterial.slopeLayerId ?? 'rock'),
+      ),
+    );
+    for (let i = 0; i < 8; i++)
+      this.uniforms[`uSurfaceLayerMeters${i}`].value = doc.surfaceMaterial.layers[i]?.meters ?? 16;
+    const tints: Record<string, number[]> = {
+      grass: [0.63, 0.78, 0.55],
+      soil: [0.7, 0.57, 0.43],
+      rock: [0.64, 0.69, 0.68],
+      sand: [0.9, 0.82, 0.65],
+    };
+    for (let i = 0; i < 8; i++)
+      (this.uniforms[`uSurfaceTint${i}`].value as THREE.Vector4).fromArray([
+        ...(tints[doc.surfaceMaterial.layers[i]?.id] ?? [1, 1, 1]),
+        1,
+      ]);
     this.updateSettings(doc.surfaceMaterial);
-    const key = doc.surfaceMaterial.layers
-      .map((layer) => layer.color.hash + (this.display.simplifiedSurface ? '' : layer.normal.hash))
-      .join(':');
+    const key =
+      String(this.dynamic) +
+      doc.surfaceMaterial.layers
+        .map(
+          (layer) =>
+            layer.color.hash +
+            (this.display.simplifiedSurface && !this.dynamic ? '' : layer.normal.hash),
+        )
+        .join(':');
     if (this.key !== key) {
       this.key = key;
       const generation = ++this.generation;
@@ -211,7 +290,7 @@ export class SurfaceMaterial {
           uniform: `uSurfaceColor${index}`,
           lease: this.pool.acquire(layer.color, true),
         };
-        return this.display.simplifiedSurface
+        return this.display.simplifiedSurface && !this.dynamic
           ? [color]
           : [
               color,
@@ -226,17 +305,53 @@ export class SurfaceMaterial {
             leases.forEach((lease) => lease.release());
             return;
           }
-          textures.forEach((texture, i) => {
-            this.uniforms[requests[i].uniform].value = texture;
-          });
+          if (this.dynamic) {
+            this.atlases.forEach((texture) => texture.dispose());
+            this.atlases = [];
+            for (let i = 0; i < doc.surfaceMaterial.layers.length; i++) {
+              const color = textures[i * 2].image as ImageBitmap,
+                normal = textures[i * 2 + 1].image as ImageBitmap;
+              const canvas = document.createElement('canvas');
+              canvas.width = color.width;
+              canvas.height = color.height * 2;
+              const context = canvas.getContext('2d');
+              if (!context) throw new Error('无法创建地表贴图');
+              context.drawImage(color, 0, 0);
+              context.drawImage(normal, 0, color.height);
+              const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+              const atlas = new THREE.DataArrayTexture(
+                new Uint8Array(pixels.buffer),
+                color.width,
+                color.height,
+                2,
+              );
+              atlas.wrapS = atlas.wrapT = THREE.RepeatWrapping;
+              atlas.generateMipmaps = true;
+              atlas.minFilter = THREE.LinearMipmapLinearFilter;
+              atlas.magFilter = THREE.LinearFilter;
+              atlas.needsUpdate = true;
+              atlas.colorSpace = THREE.NoColorSpace;
+              atlas.flipY = false;
+              atlas.anisotropy = this.display.anisotropy;
+              this.atlases.push(atlas);
+              this.uniforms[`uSurfacePacked${i}`].value = atlas;
+            }
+            for (let i = doc.surfaceMaterial.layers.length; i < 8; i++)
+              this.uniforms[`uSurfacePacked${i}`].value = this.atlases[0];
+          }
+          if (!this.dynamic)
+            textures.forEach((texture, i) => {
+              this.uniforms[requests[i].uniform].value = texture;
+            });
           this.ready = true;
           this.changed();
           this.resourceVersion++;
           this.leases.forEach((lease) => lease.release());
-          this.leases = leases;
+          if (this.dynamic) {
+            leases.forEach((lease) => lease.release());
+            this.leases = [];
+          } else this.leases = leases;
           this.pending = [];
-          this.fallback.forEach((texture) => texture.dispose());
-          this.fallback = [];
         })
         .catch((error: unknown) => {
           leases.forEach((lease) => lease.release());
@@ -248,9 +363,35 @@ export class SurfaceMaterial {
         });
     }
   }
-  updateSettings(settings: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>) {
+  updateSettings(
+    settings: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'> &
+      Partial<Pick<SurfaceMaterialPack, 'layers'>>,
+  ) {
     this.uniforms.uSurfaceScale.value = settings.scale;
-    this.uniforms.uSurfaceDetail.value = this.display.normalDetail ? settings.detail : 0;
+    const layers = settings.layers;
+    const detail = Math.max(
+      settings.detail,
+      ...(layers ?? []).map((layer) => layer.detail ?? settings.detail),
+    );
+    this.uniforms.uSurfaceDetail.value = this.display.normalDetail ? detail : 0;
+    if (layers) {
+      const meters = layers.map(
+        (layer) => (layer.meters * (layer.scale ?? settings.scale)) / settings.scale,
+      );
+      (this.uniforms.uSurfaceMeters.value as THREE.Vector4).fromArray(
+        Array.from({ length: 4 }, (_, i) => meters[i] ?? 16),
+      );
+      const details = layers.map(
+        (layer) => (layer.detail ?? settings.detail) / Math.max(detail, 0.00001),
+      );
+      (this.uniforms.uSurfaceDetails.value as THREE.Vector4).fromArray(
+        Array.from({ length: 4 }, (_, i) => details[i] ?? 0),
+      );
+      for (let i = 0; i < 8; i++) {
+        this.uniforms[`uSurfaceLayerMeters${i}`].value = meters[i] ?? 16;
+        this.uniforms[`uSurfaceLayerDetail${i}`].value = details[i] ?? 0;
+      }
+    }
     this.uniforms.uSurfaceSlope.value = settings.slopeRock ? 1 : 0;
   }
   dispose() {
@@ -260,6 +401,9 @@ export class SurfaceMaterial {
     this.leases = [];
     this.pending = [];
     this.weight.dispose();
+    this.extraWeight.dispose();
+    this.packedFallback.dispose();
+    this.atlases.forEach((texture) => texture.dispose());
     this.regions.dispose();
     this.macro?.release();
     this.fallback.forEach((texture) => texture.dispose());

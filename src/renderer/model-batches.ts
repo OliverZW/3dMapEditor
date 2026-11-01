@@ -60,6 +60,7 @@ export class ModelBatches {
     private error: (error: unknown) => void,
     private renderCounter?: ModelRenderCounter,
     private performanceMode?: 'baseline' | 'candidate',
+    private castShadows = true,
   ) {}
 
   private get(asset: ModelAsset, level: ModelLevel = 0) {
@@ -96,42 +97,44 @@ export class ModelBatches {
         };
         next.push(batch);
         batch.levels.set(0, this.parts(source, instances.length));
-        // 阴影独立于观察相机；低精度模型的屏幕层级变化不使阴影失效。
-        const shadowLevel = !this.original && builtinModelLods(asset) ? 2 : 0;
-        let shadowSource = source;
-        if (shadowLevel) {
-          try {
-            shadowSource = await this.get(asset, shadowLevel);
-          } catch (error) {
-            this.error(error);
+        if (this.castShadows) {
+          // 阴影独立于观察相机；低精度模型的屏幕层级变化不使阴影失效。
+          const shadowLevel = !this.original && builtinModelLods(asset) ? 2 : 0;
+          let shadowSource = source;
+          if (shadowLevel) {
+            try {
+              shadowSource = await this.get(asset, shadowLevel);
+            } catch (error) {
+              this.error(error);
+            }
+            if (this.disposed || generation !== this.generation) return;
+            if (shadowSource !== source)
+              batch.levels.set(shadowLevel, this.parts(shadowSource, instances.length));
           }
-          if (this.disposed || generation !== this.generation) return;
-          if (shadowSource !== source)
-            batch.levels.set(shadowLevel, this.parts(shadowSource, instances.length));
-        }
-        batch.shadows = this.parts(shadowSource, instances.length, false);
-        this.index(batch, shadowSource);
-        for (const part of batch.shadows) {
-          const mesh = part.mesh;
-          mesh.name = this.name + 'Shadow';
-          mesh.castShadow = true;
-          mesh.visible = true;
-          mesh.receiveShadow = false;
-          mesh.frustumCulled = false;
-          instances.forEach((instance, index) =>
-            mesh.setMatrixAt(index, this.scratch.multiplyMatrices(instance.matrix, part.matrix)),
-          );
-          mesh.instanceMatrix.needsUpdate = true;
-          mesh.computeBoundingSphere();
-          mesh.count = 0;
-          // Three 的阴影钩子与颜色钩子分别调用：仅阴影通道提交这些实例。
-          mesh.onBeforeShadow = () => {
-            mesh.count = instances.length;
-          };
-          mesh.onBeforeRender = () => {
+          batch.shadows = this.parts(shadowSource, instances.length, false);
+          this.index(batch, shadowSource);
+          for (const part of batch.shadows) {
+            const mesh = part.mesh;
+            mesh.name = this.name + 'Shadow';
+            mesh.castShadow = true;
+            mesh.visible = true;
+            mesh.receiveShadow = false;
+            mesh.frustumCulled = false;
+            instances.forEach((instance, index) =>
+              mesh.setMatrixAt(index, this.scratch.multiplyMatrices(instance.matrix, part.matrix)),
+            );
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingSphere();
             mesh.count = 0;
-          };
-        }
+            // Three 的阴影钩子与颜色钩子分别调用：仅阴影通道提交这些实例。
+            mesh.onBeforeShadow = () => {
+              mesh.count = instances.length;
+            };
+            mesh.onBeforeRender = () => {
+              mesh.count = 0;
+            };
+          }
+        } else this.index(batch, source);
       }
       if (this.disposed || generation !== this.generation) return;
       this.clear();

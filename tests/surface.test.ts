@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { createDocument, validateDocument } from '../src/core/document';
 import { snapshot } from '../src/core/history';
-import { applySurfaceBrush } from '../src/core/terrain';
+import { applySurfaceBrush, blendSurfaceWeights } from '../src/core/terrain';
 import { DEFAULT_BRUSH } from '../src/core/types';
 import { EditorSession } from '../src/application/editor-session';
 import { encodeProject, decodeProject } from '../src/io/project';
@@ -12,6 +12,18 @@ import { encodeProjectFiles, decodeProjectFiles } from '../src/io/project-codec'
 import { resourcePath } from '../src/io/project-resources';
 
 describe('四层地表材质、历史与工程 v4', () => {
+  it('八通道权重混合可到达每个通道，并在重复混合中保持归一化', () => {
+    const weights = new Uint8Array([255, 0, 0, 0, 0, 0, 0, 0]);
+    for (let target = 0; target < 8; target++) {
+      blendSurfaceWeights(weights, 0, 8, target, 1);
+      expect(weights[target]).toBe(255);
+      expect(weights.reduce((sum, value) => sum + value, 0)).toBe(255);
+      for (let next = 0; next < 8; next++) {
+        blendSurfaceWeights(weights, 0, 8, next, 0.17);
+        expect(weights.reduce((sum, value) => sum + value, 0)).toBe(255);
+      }
+    }
+  });
   it('图片 SHA-256 与标准向量一致', () => {
     expect(imageHash(new TextEncoder().encode('abc'))).toBe(
       'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
@@ -78,6 +90,45 @@ describe('四层地表材质、历史与工程 v4', () => {
     session.commitSurface();
     expect(session.doc.surfaceMaterial.scale).toBe(1);
   });
+  it('地表名称独立于材质名称，重命名可撤销并在工程往返保留权重', () => {
+    const session = new EditorSession();
+    const layer = session.doc.surfaceMaterial.layers[0];
+    const asset = {
+      id: 'surface-name-test',
+      name: '原材质名',
+      meters: layer.meters,
+      color: {
+        ...layer.color,
+        resource: { origin: 'project' as const, path: resourcePath(layer.color.hash, false) },
+      },
+      normal: {
+        ...layer.normal,
+        resource: { origin: 'project' as const, path: resourcePath(layer.normal.hash, false) },
+      },
+    };
+    const weights = session.doc.surface.slice();
+    session.change('选择材质', (doc) => {
+      doc.surfaceMaterial.library = [asset];
+      doc.surfaceMaterial.layers[0] = {
+        ...doc.surfaceMaterial.layers[0],
+        ...asset,
+        id: layer.id,
+        materialId: asset.id,
+      };
+    });
+    session.change('重命名地表', (doc) => {
+      doc.surfaceMaterial.layers[0].name = '自定义草地';
+    });
+    expect(session.error).toBe('');
+    expect(session.doc.surfaceMaterial.library![0].name).toBe('原材质名');
+    session.undo();
+    expect(session.doc.surfaceMaterial.layers[0].name).toBe('原材质名');
+    session.redo();
+    const restored = decodeProject(encodeProject(session.doc));
+    expect(restored.surfaceMaterial.layers[0].name).toBe('自定义草地');
+    expect(restored.surfaceMaterial.layers[0].materialId).toBe(asset.id);
+    expect(restored.surface).toEqual(weights);
+  }, 120000);
   it('工程材质可用于四层，撤销重做和目录、备份往返保持权重与资源', () => {
     const session = new EditorSession();
     const weights = session.doc.surface.slice();

@@ -39,7 +39,7 @@ const { randomUUID } = require('node:crypto');
     await page.getByRole('button', { name: '选择父目录' }).click();
     await page.getByRole('button', { name: '创建工程', exact: true }).click();
     await page.getByRole('button', { name: /资源库/ }).click();
-    const library = page.getByRole('dialog', { name: '模型资源库' });
+    const library = page.getByRole('dialog', { name: '资源库' });
     const importer = page.getByRole('dialog', { name: '导入模型' });
     const choose = async (file) => {
       const pending = page.waitForEvent('filechooser');

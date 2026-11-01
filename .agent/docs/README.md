@@ -6,7 +6,7 @@
 
 - Windows x64 便携版构建位于 `dist/mapEdtor-v<版本号>/`；构建与验证见[实施记录](implementation.md)。
 - 浏览器编辑器支持地形、地表、模型、树草、河流、据点、辖区、势力、撤销和工程保存；运行方法、实际验证及剩余差距见[实施记录](implementation.md)。
-- 当前源码已提供 v4 自包含备份、`.map3dproj` 目录工程、Electron 首页、自定义模型和地表材质，以及 Windows 便携版构建；不兼容旧包，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
+- 当前源码已提供 v5 自包含备份（兼容读取 v4）、`.map3dproj` 目录工程、Electron 首页、自定义模型及最多八层可增删地表，以及 Windows 便携版构建；不兼容 v1～v3 旧包，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
 - 运行导出采用引擎数据协议 v2，游戏负责读取与呈现；真实 Cocos Creator 导入、材质和运行性能尚未验收。详见[导出协议](engine-export-spec.md)与[Cocos 适配](cocos-export.md)。
 - 本机 Windows 固定示例性能见[发布验收](windows-release-performance.md)；约两万棵树的目标场景、其他设备及成品美术质量尚未验收，历史测试与限制保留在[实施记录](implementation.md)和[渲染优化](render-optimization.md)。
 

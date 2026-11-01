@@ -82,11 +82,16 @@ export function encodeProjectFiles(
   } = doc;
   files['map.json'] = jsonBytes({
     ...map,
+    formatVersion: 4,
     assets: assets
       .filter((asset) => resourceReference(asset).origin === 'project' || used.has(asset.id))
       .map((asset) => store(asset, 'model')),
     surfaceMaterial: {
       ...surfaceMaterial,
+      textures: surfaceMaterial.textures?.map((asset) => ({
+        ...asset,
+        image: store(asset.image, 'surface'),
+      })),
       layers: surfaceMaterial.layers.map((layer) => ({
         ...layer,
         color: store(layer.color, 'surface'),
@@ -139,7 +144,11 @@ export function decodeProjectFiles(
   if (!name.trim() || name !== name.trim() || name.length > 128) throw new Error('工程名称无效');
   const map = parseJson(files['map.json'], 'map.json'),
     objects = parseJson(files['objects.json'], 'objects.json');
-  if (map.formatVersion !== 3 || map.generatorVersion !== 1)
+  if (
+    typeof map.formatVersion !== 'number' ||
+    ![3, 4].includes(map.formatVersion) ||
+    map.generatorVersion !== 1
+  )
     throw new Error('不支持的地图数据版本');
   if (
     !Array.isArray(map.assets) ||
@@ -186,11 +195,16 @@ export function decodeProjectFiles(
     >;
     const doc: MapDocument = {
       ...source,
+      formatVersion: 3,
       ...contents,
       name,
       assets: source.assets.map((asset) => hydrate(asset, 'model')),
       surfaceMaterial: {
         ...source.surfaceMaterial,
+        textures: source.surfaceMaterial.textures?.map((asset) => ({
+          ...asset,
+          image: hydrate(asset.image, 'surface'),
+        })),
         layers: source.surfaceMaterial.layers.map((layer) => ({
           ...layer,
           color: hydrate(layer.color, 'surface'),

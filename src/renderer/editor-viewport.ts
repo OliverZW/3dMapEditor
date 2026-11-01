@@ -23,10 +23,12 @@ import { WaterSurface } from './water-surface';
 import type { RenderBounds } from '../application/render-invalidation';
 import { DemandFrameLoop } from './demand-frame-loop';
 import { DISPLAY_QUALITIES, displayPixelRatio } from './display-quality';
-import type { DisplayQuality } from './display-quality';
+import type { DisplayQuality, RenderSettings } from './display-quality';
 export interface ViewportRenderOptions {
   /** 应用层显式传入本机偏好；独立渲染夹具默认保留原高画质路径。 */
   displayQuality?: DisplayQuality;
+  settings?: RenderSettings;
+  powerPreference?: WebGLPowerPreference;
   /** 显式诊断工具的单变量对照，不改变产品默认值。 */
   diagnosticAntialias?: boolean;
   /** 第 3 步单变量对照：保持流畅档设置，使用第 2 步地表。 */
@@ -48,7 +50,7 @@ interface RenderStats {
 }
 export class EditorViewport {
   get displayQuality() {
-    return this.renderOptions.displayQuality ?? 'high';
+    return this.renderOptions.settings?.quality ?? this.renderOptions.displayQuality ?? 'high';
   }
   get diagnosticDisplay() {
     return {
@@ -56,6 +58,10 @@ export class EditorViewport {
       surfaceMaterial: this.surfaceMaterial.material.type,
       surfaceProgram: this.surfaceMaterial.material.customProgramCacheKey(),
       shadowSize: this.sun.shadow.mapSize.x,
+      treeShadowBatches: this.treeModels.group.children.filter((object) => object.castShadow)
+        .length,
+      siteShadowBatches: this.siteModels.group.children.filter((object) => object.castShadow)
+        .length,
       normalDetail: this.surfaceMaterial.uniforms.uSurfaceDetail.value,
       anisotropy: (this.surfaceMaterial.uniforms.uSurfaceColor0.value as THREE.Texture).anisotropy,
     };
@@ -202,12 +208,18 @@ export class EditorViewport {
     const preset = DISPLAY_QUALITIES[this.displayQuality];
     const display = {
       ...preset,
-      simplifiedSurface: preset.simplifiedSurface && !renderOptions.diagnosticPreviousSurface,
+      ...renderOptions.settings,
+      normalDetail:
+        preset.normalDetail &&
+        !(renderOptions.settings?.simplifiedSurface ?? preset.simplifiedSurface),
+      simplifiedSurface:
+        (renderOptions.settings?.simplifiedSurface ?? preset.simplifiedSurface) &&
+        !renderOptions.diagnosticPreviousSurface,
     };
     this.renderer = new THREE.WebGLRenderer({
       antialias: renderOptions.diagnosticAntialias ?? display.antialias,
       alpha: false,
-      powerPreference: 'high-performance',
+      powerPreference: renderOptions.powerPreference ?? 'high-performance',
     });
     this.renderer.shadowMap.enabled = display.shadows;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -275,6 +287,7 @@ export class EditorViewport {
       modelError,
       this.modelRenderCounter,
       renderOptions.performanceMode,
+      display.shadows && (renderOptions.settings?.treeShadows ?? true),
     );
     this.siteModels = new ModelBatches(
       this.library,
@@ -1278,7 +1291,11 @@ export class EditorViewport {
     if (wasIdle) this.onStats?.({ ...this.stats });
     this.diagnosticFrame?.end(performance.now() - diagnosticStarted);
     return (
-      !!this.diagnosticFrame || this.navigation.needsFrame || this.visibleWater || this.visibleGrass
+      this.renderOptions.settings?.demandRendering === false ||
+      !!this.diagnosticFrame ||
+      this.navigation.needsFrame ||
+      this.visibleWater ||
+      this.visibleGrass
     );
   };
   dispose() {

@@ -53,6 +53,9 @@
     "test:export-contract": "vitest run tests/engine-export-contract.test.mjs",
     "test:engine-export": "vitest run tests/engine-export.test.mjs tests/engine-export-contract.test.mjs",
     "dev:desktop": "tsc -b && node dev-tools/start-desktop.mjs",
+    "test:surface-parameters": "node tests/surface-parameters-smoke.cjs",
+    "test:surface-eight": "node tests/surface-eight-smoke.cjs",
+    "test:render-settings": "node tests/render-settings-smoke.cjs",
     "test:desktop": "node tests/desktop-smoke.cjs"
   },
   "dependencies": {

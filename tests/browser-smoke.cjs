@@ -105,7 +105,7 @@ const edgePath = fs.existsSync(edgeCandidate) ? edgeCandidate : undefined;
   record('据点分配势力与逻辑辖区真实保存');
   await page.screenshot({ path: artifactPath + '/editor-territory.png' });
   await page.getByRole('button', { name: /资源库 8/ }).click();
-  await page.getByRole('dialog', { name: '模型资源库' }).waitFor();
+  await page.getByRole('dialog', { name: '资源库' }).waitFor();
   await page.locator('.resource-nav').getByRole('button', { name: /草丛/ }).click();
   await page.waitForTimeout(800);
   await page.screenshot({ path: artifactPath + '/editor-resources.png' });

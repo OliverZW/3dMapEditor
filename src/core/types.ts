@@ -102,7 +102,7 @@ export interface MapDocument {
   sites: Site[];
   factions: Faction[];
 }
-export type SurfaceLayerId = 'grass' | 'soil' | 'rock' | 'sand';
+export type SurfaceLayerId = string;
 export interface SurfaceImage {
   resource?: ResourceReference;
   hash: string;
@@ -118,6 +118,13 @@ export interface SurfaceAsset {
   color: SurfaceImage;
   normal: SurfaceImage;
 }
+export type SurfaceTextureKind = 'color' | 'normal';
+export interface SurfaceTextureAsset {
+  id: string;
+  name: string;
+  kind: SurfaceTextureKind;
+  image: SurfaceImage;
+}
 export interface WaterMaterialPack {
   version: 1;
   normal: SurfaceImage;
@@ -130,6 +137,8 @@ export interface SurfaceMaterialPack {
   source: string;
   layers: {
     id: SurfaceLayerId;
+    scale?: number;
+    detail?: number;
     materialId?: string;
     name: string;
     meters: number;
@@ -137,9 +146,11 @@ export interface SurfaceMaterialPack {
     normal: SurfaceImage;
   }[];
   library?: SurfaceAsset[];
+  textures?: SurfaceTextureAsset[];
   scale: number;
   detail: number;
   slopeRock: boolean;
+  slopeLayerId?: string;
 }
 export type Tool =
   | 'overview'

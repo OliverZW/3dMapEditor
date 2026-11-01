@@ -33,7 +33,7 @@ export function InputHints({
                   : session.tool === 'terrain'
                     ? '拖动' + terrainAction
                     : session.tool === 'surface'
-                      ? '涂刷' + ['草地', '泥土', '岩石', '沙地'][session.brush.surfaceLayer]
+                      ? '涂刷' + session.doc.surfaceMaterial.layers[session.brush.surfaceLayer].name
                       : '拖动' + (session.brush.erase ? '擦除' : '刷入');
   return (
     <div className="input-hints" aria-label="地图操作提示">

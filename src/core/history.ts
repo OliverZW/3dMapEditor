@@ -117,7 +117,8 @@ export class History {
     if (
       JSON.stringify(before.settings) !== JSON.stringify(after.settings) ||
       JSON.stringify(before.grid) !== JSON.stringify(after.grid) ||
-      before.owners.length !== after.owners.length
+      before.owners.length !== after.owners.length ||
+      before.surface.length !== after.surface.length
     ) {
       const bytes = snapshotSize(before) + snapshotSize(after);
       if (bytes > HISTORY_BUDGET)

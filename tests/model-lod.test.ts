@@ -142,6 +142,63 @@ describe('模型批次与稳定身份', () => {
     expect(geometryDispose).not.toHaveBeenCalled();
     expect(batches.group.children).toHaveLength(0);
   });
+  it('树木投影关闭时不创建阴影批次，内置和自定义树木仍显示、接收阴影并可拾取', async () => {
+    for (const original of [false, true]) {
+      for (const modelAsset of [asset, { ...asset, id: 'custom-tree' }]) {
+        const model = source();
+        const batches = new ModelBatches(
+          { get: async () => model },
+          'TreeBatch',
+          original,
+          vi.fn(),
+          vi.fn(),
+          undefined,
+          undefined,
+          false,
+        );
+        await batches.rebuild([
+          { asset: modelAsset, instances: [{ id: 71, matrix: new THREE.Matrix4() }] },
+        ]);
+        // 选中使用原模型，独立验证颜色批次与稳定拾取身份。
+        batches.update(camera(), 1000, 71);
+        expect(batches.group.children.some((object) => object.castShadow)).toBe(false);
+        expect(batches.group.children.some((object) => object.name.endsWith('Shadow'))).toBe(false);
+        expect(batches.diagnostics.visible).toBe(1);
+        expect(batches.group.children.every((object) => object.receiveShadow)).toBe(true);
+        const ray = new THREE.Raycaster(new THREE.Vector3(0, 0, 1000), new THREE.Vector3(0, 0, -1));
+        expect(batches.pick(ray, Infinity)).toBe(71);
+        const disposed = vi.fn();
+        batches.group.children.forEach((object) =>
+          (object as THREE.InstancedMesh).addEventListener('dispose', disposed),
+        );
+        const count = batches.group.children.length;
+        await batches.rebuild([]);
+        expect(disposed).toHaveBeenCalledTimes(count);
+        batches.dispose();
+        // 批次开关不改写共享源模型或几何。
+        expect(
+          (model.children[0] as THREE.Mesh).geometry.attributes.position.count,
+        ).toBeGreaterThan(0);
+      }
+    }
+    const sites = new ModelBatches(
+      { get: async () => source() },
+      'SiteBatch',
+      false,
+      vi.fn(),
+      vi.fn(),
+    );
+    await sites.rebuild([
+      {
+        asset: { ...asset, id: 'custom-city', kind: 'city' },
+        instances: [{ id: 4, matrix: new THREE.Matrix4() }],
+      },
+    ]);
+    expect(
+      sites.group.children.some((object) => object.name === 'SiteBatchShadow' && object.castShadow),
+    ).toBe(true);
+    sites.dispose();
+  });
   it('迟到构建不会覆盖已切换的工程，LOD失败保留原模型', async () => {
     let release!: (group: THREE.Group) => void;
     const pending = new Promise<THREE.Group>((resolve) => {

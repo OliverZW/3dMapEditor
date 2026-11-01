@@ -38,6 +38,7 @@ export function cloneSurfaceMaterial(pack: SurfaceMaterialPack): SurfaceMaterial
       color: { ...asset.color },
       normal: { ...asset.normal },
     })),
+    textures: pack.textures?.map((asset) => ({ ...asset, image: { ...asset.image } })),
   };
 }
 
@@ -57,10 +58,48 @@ export function validateSurfaceMaterial(pack: SurfaceMaterialPack): void {
     pack.detail > 1 ||
     typeof pack.slopeRock !== 'boolean' ||
     !Array.isArray(pack.layers) ||
-    pack.layers.length !== 4
+    pack.layers.length < 1 ||
+    pack.layers.length > 8
   )
     throw new Error('地表材质包或显示参数无效');
-  const ids = ['grass', 'soil', 'rock', 'sand'];
+  const ids = new Set<string>();
+  if (pack.textures !== undefined && (!Array.isArray(pack.textures) || pack.textures.length > 128))
+    throw new Error('贴图库无效或超过 128 项');
+  const textureIds = new Set<string>();
+  let textureBytes = 0;
+  for (const asset of pack.textures ?? []) {
+    const image = asset?.image;
+    if (
+      !asset ||
+      typeof asset.id !== 'string' ||
+      !/^texture-[a-zA-Z0-9-]{1,80}$/.test(asset.id) ||
+      textureIds.has(asset.id) ||
+      typeof asset.name !== 'string' ||
+      !asset.name.trim() ||
+      asset.name.length > 128 ||
+      !['color', 'normal'].includes(asset.kind) ||
+      !image ||
+      !/^[a-f0-9]{64}$/.test(image.hash) ||
+      !Number.isInteger(image.width) ||
+      !Number.isInteger(image.height) ||
+      image.width < 2 ||
+      image.height < 2 ||
+      image.width > 4096 ||
+      image.height > 4096 ||
+      !(image.bytes instanceof Uint8Array) ||
+      image.bytes.length === 0 ||
+      image.bytes.length > 16 * 1024 * 1024
+    )
+      throw new Error('贴图库条目无效');
+    textureIds.add(asset.id);
+    textureBytes += image.bytes.length;
+  }
+  if (textureBytes > 384 * 1024 * 1024) throw new Error('贴图库超过 384 MiB');
+  if (
+    pack.slopeLayerId !== undefined &&
+    !pack.layers.some((layer) => layer.id === pack.slopeLayerId)
+  )
+    throw new Error('显岩地表引用无效');
   if (pack.library !== undefined && (!Array.isArray(pack.library) || pack.library.length > 64))
     throw new Error('地表材质库无效或超过 64 项');
   const libraryIds = new Set<string>();
@@ -107,23 +146,29 @@ export function validateSurfaceMaterial(pack: SurfaceMaterialPack): void {
   }
   if (libraryBytes > 384 * 1024 * 1024) throw new Error('地表材质库超过 384 MiB');
   let total = 0;
-  pack.layers.forEach((layer, index) => {
+  pack.layers.forEach((layer) => {
     if (
       !layer ||
-      layer.id !== ids[index] ||
+      typeof layer.id !== 'string' ||
+      !/^[a-zA-Z0-9-]{1,80}$/.test(layer.id) ||
+      ids.has(layer.id) ||
       typeof layer.name !== 'string' ||
       !layer.name ||
       layer.name.length > 128 ||
+      (layer.scale !== undefined &&
+        (!Number.isFinite(layer.scale) || layer.scale < 0.25 || layer.scale > 4)) ||
+      (layer.detail !== undefined &&
+        (!Number.isFinite(layer.detail) || layer.detail < 0 || layer.detail > 1)) ||
       !Number.isFinite(layer.meters) ||
       layer.meters < 1 ||
       layer.meters > 512
     )
-      throw new Error('地表材质须依次为草地、泥土、岩石、沙地');
+      throw new Error('地表标识或参数无效');
+    ids.add(layer.id);
     if (layer.materialId !== undefined) {
       const asset = pack.library?.find((item) => item.id === layer.materialId);
       if (
         !asset ||
-        asset.name !== layer.name ||
         asset.meters !== layer.meters ||
         asset.color.hash !== layer.color.hash ||
         asset.normal.hash !== layer.normal.hash

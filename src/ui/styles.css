@@ -688,23 +688,6 @@ button svg {
   border-radius: var(--radius);
   gap: var(--space-1);
 }
-.display-quality {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding-left: var(--space-2);
-  color: var(--overlay-text);
-  font-size: 11px;
-}
-.display-quality select {
-  width: 82px;
-  min-height: 30px;
-  padding: 4px 6px;
-  background: var(--overlay-bg);
-  border-color: var(--overlay-border);
-  color: var(--overlay-text);
-  font-size: 11px;
-}
 .viewport-actions button {
   min-height: var(--control-height);
   width: 32px;
@@ -1856,7 +1839,7 @@ button:focus-visible,
 }
 .home-shortcuts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 button.home-shortcut {
@@ -1999,6 +1982,8 @@ button.home-shortcut:focus-visible {
   flex: 1;
   min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
   gap: 5px;
   text-align: left;
   background: transparent;
@@ -2075,4 +2060,238 @@ button.home-shortcut:focus-visible {
   justify-content: flex-end;
   background: #080f1840;
   backdrop-filter: none;
+}
+
+.render-settings {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.render-settings h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.render-settings section + section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.render-setting-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0;
+  cursor: pointer;
+}
+.render-setting-option input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin-top: 2px;
+}
+.render-setting-option small {
+  display: block;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.surface-palette-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.surface-palette-actions button {
+  font-size: 11px;
+}
+.surface-delete-confirm {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control-bg);
+}
+.surface-delete-confirm p {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+}
+.surface-delete-confirm .surface-palette-actions {
+  margin-bottom: 0;
+  margin-top: 10px;
+}
+
+/* 地表主操作固定同排，卡片区域独立留白。 */
+.surface-palette-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.surface-palette-actions button {
+  min-width: 0;
+  padding: 6px 4px;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.surface-palette-actions button svg {
+  width: 13px;
+  height: 13px;
+}
+.surface-texture-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+button.surface-texture-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  padding: 8px;
+  gap: 5px;
+  text-align: left;
+}
+.surface-texture-slot img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.surface-texture-slot span,
+.surface-texture-slot small {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+.resource-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.resource-tabs [aria-selected='true'] {
+  background: var(--selected-fill);
+  border-color: #7cb5df;
+}
+.texture-library {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.texture-library-tools {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.texture-library-tools label {
+  display: grid;
+  gap: 5px;
+}
+.texture-library-tools input[type='file'] {
+  max-width: 260px;
+}
+.texture-library-content {
+  display: flex;
+  gap: 20px;
+  min-height: 180px;
+  overflow: auto;
+}
+.texture-library-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  flex: 1;
+  align-content: start;
+}
+.texture-library-grid button {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+.texture-library-grid button img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.texture-library-grid button.selected {
+  border-color: #7cb5df;
+  background: var(--selected-fill);
+}
+.texture-library-detail {
+  width: 220px;
+  flex: none;
+  overflow-wrap: anywhere;
+}
+.texture-library-detail img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.surface-palette-actions button small {
+  font-size: 10px;
+  opacity: 0.8;
+}
+.texture-library-grid {
+  grid-auto-rows: max-content;
+  align-items: start;
+}
+.texture-library-grid button {
+  align-items: stretch;
+  text-align: left;
+  gap: 6px;
+}
+.texture-library-grid button img {
+  height: 96px;
+  aspect-ratio: auto;
+  flex: none;
+  border-radius: 4px;
+}
+.texture-library-grid button strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.texture-library-grid button small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.texture-library-detail {
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.texture-library-detail img {
+  height: 180px;
+  aspect-ratio: auto;
+}
+
+.setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button.help-tip {
+  min-height: 20px;
+  width: 20px;
+  padding: 2px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 50%;
+}
+button.help-tip:hover {
+  color: var(--blue);
+  background: var(--selected-fill);
+}
+.surface-slope-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.surface-slope-toggle .check-row {
+  margin: 0;
 }

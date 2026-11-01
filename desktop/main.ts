@@ -1,15 +1,15 @@
-import { configureWindowsGpu } from './windows-gpu';
+import { configureWindowsGpu, isGpuPreference } from './windows-gpu';
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import type { GpuPreference } from '../src/platform/gpu-preference';
 import * as fs from 'node:fs/promises';
 import type { RecentProject } from '../src/platform/desktop-contract';
 import { NativeProjectStorage } from './native-project-storage';
 import { CloseController } from './close-controller';
 
-configureWindowsGpu(process.platform, app.commandLine);
 protocol.registerSchemesAsPrivileged([
   { scheme: 'shanhe', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
@@ -33,6 +33,25 @@ const profile =
   process.env.MAP_EDITOR_PROFILE ?? path.join(app.getPath('appData'), 'ShanheMapEditor');
 mkdirSync(profile, { recursive: true });
 app.setPath('userData', profile);
+const gpuFile = path.join(profile, 'gpu-preference.json');
+let gpuPreference: GpuPreference = 'discrete';
+let gpuWarning: string | undefined;
+try {
+  if (statSync(gpuFile).size > 1024) throw new Error('显卡设置超过大小限制');
+  const value: unknown = JSON.parse(readFileSync(gpuFile, 'utf8'));
+  if (!isGpuPreference(value)) throw new Error('显卡设置无效');
+  gpuPreference = value;
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+    gpuWarning = `无法读取显卡设置，已使用独显优先：${String(error)}`;
+}
+const activeGpuPreference: GpuPreference = app.commandLine.hasSwitch('force_low_power_gpu')
+  ? 'integrated'
+  : app.commandLine.hasSwitch('force_high_performance_gpu')
+    ? 'discrete'
+    : gpuPreference;
+configureWindowsGpu(process.platform, app.commandLine, gpuPreference);
+
 const capabilities = new Map<string, NativeProjectStorage>();
 const parents = new Map<string, string>();
 const recentFile = path.join(profile, 'recent-projects.json');
@@ -146,6 +165,30 @@ function handle(channel: string, operation: (...args: unknown[]) => unknown) {
   });
 }
 function installHandlers() {
+  handle('settings:gpu-read', () => ({
+    supported: process.platform === 'win32',
+    preference: gpuPreference,
+    activePreference: activeGpuPreference,
+    warning: gpuWarning,
+  }));
+  handle('settings:gpu-write', (value) => {
+    if (process.platform !== 'win32' || !isGpuPreference(value))
+      throw new Error('显卡选项无效或当前平台不支持');
+    const temporary = path.join(profile, `gpu-${randomUUID()}.tmp`);
+    try {
+      writeFileSync(temporary, JSON.stringify(value), { flag: 'wx' });
+      renameSync(temporary, gpuFile);
+      gpuPreference = value;
+      gpuWarning = undefined;
+    } finally {
+      try {
+        unlinkSync(temporary);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+          console.warn('显卡设置临时文件清理失败', error);
+      }
+    }
+  });
   handle('backup:save', async (name, data) => {
     const filename = text(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
     const value = bytes(data, 256 * 1024 * 1024);
@@ -350,10 +393,12 @@ if (ownsInstance)
         show: false,
         title: '山河地图编辑器',
         webPreferences: {
-          additionalArguments:
-            process.env.MAP_EDITOR_PERFORMANCE_PROBE === '1'
+          additionalArguments: [
+            `--map-editor-gpu=${activeGpuPreference}`,
+            ...(process.env.MAP_EDITOR_PERFORMANCE_PROBE === '1'
               ? ['--map-editor-performance-probe']
-              : [],
+              : []),
+          ],
           preload: path.join(__dirname, 'preload.js'),
           nodeIntegration: false,
           contextIsolation: true,

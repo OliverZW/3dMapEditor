@@ -26,5 +26,9 @@ export function prepareSurfaceDocument(doc: MapDocument): MapDocument {
       }
     }
   }
+  for (const asset of surfaceMaterial.textures ?? []) {
+    asset.image.bytes = surfaceImageBytes(asset.image);
+    validateSurfacePng(asset.image.bytes, asset.image.hash, asset.image.width, asset.image.height);
+  }
   return { ...doc, surfaceMaterial };
 }

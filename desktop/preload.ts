@@ -32,6 +32,13 @@ ipcRenderer.on('editor:close-request', (_event, id: unknown) => {
   else pendingClose = id;
 });
 const bridge: DesktopBridge = {
+  activeGpuPreference: process.argv.includes('--map-editor-gpu=integrated')
+    ? 'integrated'
+    : process.argv.includes('--map-editor-gpu=auto')
+      ? 'auto'
+      : 'discrete',
+  getGpuSettings: () => ipcRenderer.invoke('settings:gpu-read'),
+  setGpuPreference: (preference) => ipcRenderer.invoke('settings:gpu-write', preference),
   performanceProbeEnabled: process.argv.includes('--map-editor-performance-probe'),
   onWindowVisibility: (callback) => {
     visibilityCallbacks.add(callback);

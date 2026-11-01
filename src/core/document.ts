@@ -62,7 +62,7 @@ export function validateDocument(doc: MapDocument): void {
   const count = s.samples ** 2;
   if (
     doc.heights.length !== count ||
-    doc.surface.length !== count * 4 ||
+    doc.surface.length !== count * doc.surfaceMaterial.layers.length ||
     doc.owners.length !== g.columns * g.rows
   )
     throw new Error('地图数据长度不一致');
@@ -73,9 +73,12 @@ export function validateDocument(doc: MapDocument): void {
     if (!Number.isFinite(height) || height < s.minHeight || height > s.maxHeight)
       throw new Error('高度数据超出范围');
   }
-  for (let i = 0; i < surface.length; i += 4)
-    if (surface[i] + surface[i + 1] + surface[i + 2] + surface[i + 3] !== 255)
-      throw new Error('地表权重未归一化');
+  const channels = doc.surfaceMaterial.layers.length;
+  for (let i = 0; i < surface.length; i += channels) {
+    let sum = 0;
+    for (let c = 0; c < channels; c++) sum += surface[i + c];
+    if (sum !== 255) throw new Error('地表权重未归一化');
+  }
   const ids = new Set<number>();
   const register = (id: number) => {
     if (!Number.isSafeInteger(id) || id <= 0 || ids.has(id)) throw new Error('对象 ID 无效或重复');

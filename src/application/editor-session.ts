@@ -101,13 +101,35 @@ export class EditorSession {
     revision: number;
     values: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>;
   } | null = null;
-  surfacePreview: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'> | null = null;
+  private surfaceLayerEdit: { layerId: string; documentVersion: number; revision: number } | null =
+    null;
+  surfacePreview: SurfaceMaterialPack | null = null;
+  previewSurfaceParameters(values: { scale?: number; detail?: number }) {
+    const layer = this.doc.surfaceMaterial.layers[this.brush.surfaceLayer];
+    if (!this.surfaceLayerEdit || this.surfaceLayerEdit.layerId !== layer.id) {
+      this.cancelSurface();
+      this.cancelStroke();
+      this.surfaceLayerEdit = {
+        layerId: layer.id,
+        documentVersion: this.documentVersion,
+        revision: this.revision,
+      };
+    }
+    const base = this.surfacePreview ?? this.doc.surfaceMaterial;
+    this.surfacePreview = {
+      ...base,
+      layers: base.layers.map((item) => (item.id === layer.id ? { ...item, ...values } : item)),
+    };
+    this.invalidateRender('material');
+    this.notify();
+  }
   surfaceLayerPreview: { index: number; asset: SurfaceAsset } | null = null;
   constructor(initial = createDemo()) {
     this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(initial)));
     this.heights = deriveHeights(this.doc);
   }
   previewSurface(values: Partial<Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>>) {
+    if (this.surfaceLayerEdit) this.cancelSurface();
     if (!this.surfaceEdit) {
       this.cancelStroke();
       const { scale, detail, slopeRock } = this.doc.surfaceMaterial;
@@ -117,11 +139,37 @@ export class EditorSession {
         values: { scale, detail, slopeRock },
       };
     }
-    this.surfacePreview = { ...(this.surfacePreview ?? this.surfaceEdit.values), ...values };
+    this.surfacePreview = {
+      ...this.doc.surfaceMaterial,
+      ...(this.surfacePreview ?? this.surfaceEdit.values),
+      ...values,
+    };
     this.invalidateRender('material');
     this.notify();
   }
   commitSurface() {
+    const layerEdit = this.surfaceLayerEdit;
+    if (layerEdit) {
+      const candidate = this.surfacePreview?.layers.find((item) => item.id === layerEdit.layerId);
+      this.surfaceLayerEdit = null;
+      this.surfacePreview = null;
+      if (
+        !candidate ||
+        layerEdit.documentVersion !== this.documentVersion ||
+        layerEdit.revision !== this.revision
+      ) {
+        this.invalidateRender('material');
+        this.notify();
+        return;
+      }
+      this.change('调整地表独立参数', (doc) => {
+        const layer = doc.surfaceMaterial.layers.find((item) => item.id === layerEdit.layerId);
+        if (!layer) throw new Error('目标地表已不存在');
+        layer.scale = candidate.scale ?? doc.surfaceMaterial.scale;
+        layer.detail = candidate.detail ?? doc.surfaceMaterial.detail;
+      });
+      return;
+    }
     const edit = this.surfaceEdit,
       values = this.surfacePreview;
     this.surfaceEdit = null;
@@ -134,6 +182,7 @@ export class EditorSession {
     this.change('调整地表材质', (doc) => Object.assign(doc.surfaceMaterial, values));
   }
   cancelSurface() {
+    this.surfaceLayerEdit = null;
     if (this.surfacePreview) this.invalidateRender('material');
     this.surfaceEdit = null;
     this.surfacePreview = null;
@@ -185,6 +234,10 @@ export class EditorSession {
   }
   getSnapshot = () => this.uiRevision;
   notify(immediate = true) {
+    this.brush.surfaceLayer = Math.max(
+      0,
+      Math.min(this.brush.surfaceLayer, this.doc.surfaceMaterial.layers.length - 1),
+    );
     this.viewListeners.forEach((fn) => fn());
     if (immediate) {
       if (this.uiTimer) clearTimeout(this.uiTimer);
@@ -309,6 +362,7 @@ export class EditorSession {
     validateDocument(candidate);
     this.cancelStroke();
     this.surfaceEdit = null;
+    this.surfaceLayerEdit = null;
     this.surfacePreview = null;
     this.surfaceLayerPreview = null;
     this.doc = candidate;

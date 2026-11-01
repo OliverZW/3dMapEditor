@@ -17,7 +17,7 @@ async function imageFromCanvas(canvas: HTMLCanvasElement): Promise<SurfaceImage>
   };
 }
 
-async function readImage(file: File): Promise<SurfaceImage> {
+export async function importSurfaceImage(file: File): Promise<SurfaceImage> {
   if (file.size > 32 * 1024 * 1024 || !['image/png', 'image/jpeg'].includes(file.type))
     throw new Error('请选择不超过 32 MiB 的 PNG 或 JPG 图片');
   let bitmap: ImageBitmap;
@@ -50,10 +50,10 @@ export async function importSurfaceAsset(
   if (!name.trim() || name.trim().length > 128) throw new Error('材质名称须为 1～128 字符');
   if (!Number.isFinite(meters) || meters < 1 || meters > 512)
     throw new Error('平铺尺度须为 1～512 米');
-  const color = await readImage(colorFile);
+  const color = await importSurfaceImage(colorFile);
   let normal: SurfaceImage;
   if (normalFile) {
-    normal = await readImage(normalFile);
+    normal = await importSurfaceImage(normalFile);
     if (normal.width !== color.width || normal.height !== color.height)
       throw new Error('颜色与法线贴图尺寸必须一致');
   } else {
