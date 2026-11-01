@@ -13,7 +13,7 @@ async function launch() {
   });
 }
 
-async function fixture(page, samples = 513, width = 512, depth = 512) {
+async function fixture(page, samples = 513, width = 512, depth = 512, renderOptions = {}) {
   // 固定材质场景独占视口，避免后台启动示例持续渲染密集树林。
   const url = process.env.EDITOR_URL || 'http://127.0.0.1:5173/';
   await page.route(url, (route) =>
@@ -25,7 +25,7 @@ async function fixture(page, samples = 513, width = 512, depth = 512) {
   await page.goto(url);
   await page.unroute(url);
   await page.evaluate(
-    async ({ samples, width, depth }) => {
+    async ({ samples, width, depth, renderOptions }) => {
       const sessionSource = await (await fetch('/src/application/editor-session.ts')).text();
       const resourceModule = sessionSource.match(
         /from\s*["']([^"']*\/builtin-resources\.ts(?:\?[^"']*)?)["']/,
@@ -79,7 +79,7 @@ async function fixture(page, samples = 513, width = 512, depth = 512) {
       const host = document.createElement('div');
       host.style.cssText = 'position:fixed;inset:0;background:#a5b6af;z-index:10000';
       document.body.appendChild(host);
-      const viewport = new EditorViewport(host, session);
+      const viewport = new EditorViewport(host, session, renderOptions);
       const camera = viewport.camera;
       camera.position.set(width * 0.25, 360, depth * 0.65);
       viewport.navigation.rig.target.set(0, 40, 0);
@@ -87,7 +87,7 @@ async function fixture(page, samples = 513, width = 512, depth = 512) {
       camera.updateMatrixWorld(true);
       window.surfaceFixture = { session, viewport, host };
     },
-    { samples, width, depth },
+    { samples, width, depth, renderOptions },
   );
   await page.waitForTimeout(2500);
 }

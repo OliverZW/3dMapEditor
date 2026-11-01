@@ -135,6 +135,8 @@ async function measure(page, label, duration = 10000) {
         timestamps = [],
         frameGpu = new Map();
       const cleanup = () => {
+        v.diagnosticFrame = undefined;
+        v.requestRender();
         v.renderer.render = original;
         for (const item of pending) g.deleteQuery(item.q);
       };
@@ -157,10 +159,16 @@ async function measure(page, label, duration = 10000) {
         original(...args);
         if (q) {
           g.endQuery(ext.TIME_ELAPSED_EXT);
-          pending.push({ q, frame: v.frame, main: args[0] === v.scene });
+          pending.push({
+            q,
+            frame: v.diagnosticScheduling.renderedFrames,
+            main: args[0] === v.scene,
+          });
         }
         submissions.push(performance.now() - t);
       };
+      v.diagnosticFrame = { begin() {}, end() {} };
+      v.requestRender();
       const start = performance.now();
       try {
         await new Promise((resolve) => {

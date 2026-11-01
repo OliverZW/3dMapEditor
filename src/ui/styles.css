@@ -680,11 +680,30 @@ button svg {
 }
 .viewport-actions {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   background: var(--overlay-bg);
   border: 1px solid var(--overlay-border);
   padding: var(--space-1);
   border-radius: var(--radius);
   gap: var(--space-1);
+}
+.display-quality {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-left: var(--space-2);
+  color: var(--overlay-text);
+  font-size: 11px;
+}
+.display-quality select {
+  width: 82px;
+  min-height: 30px;
+  padding: 4px 6px;
+  background: var(--overlay-bg);
+  border-color: var(--overlay-border);
+  color: var(--overlay-text);
+  font-size: 11px;
 }
 .viewport-actions button {
   min-height: var(--control-height);

@@ -12,6 +12,17 @@
     }
   },
   "scripts": {
+    "test:windows-release-interaction": "node tests/windows-release-interaction.cjs",
+    "test:windows-release-matrix": "node dev-tools/run-performance-matrix.mjs",
+    "prepare:performance-fixture": "node dev-tools/create-performance-fixture.mjs",
+    "test:editing-profile": "node tests/editing-profile.cjs",
+    "test:editing-consistency": "node tests/editing-consistency.cjs",
+    "test:windows-editing": "node tests/windows-editing-performance.cjs",
+    "test:demand-render": "node tests/demand-render.cjs",
+    "test:demand-render-desktop": "node tests/demand-render-desktop.cjs",
+    "test:simple-surface": "node tests/simple-surface-render.cjs",
+    "test:display-quality": "node tests/display-quality-smoke.cjs",
+    "test:windows-performance": "node tests/windows-performance.cjs",
     "dev": "vite --host 127.0.0.1",
     "build": "node dev-tools/build-windows.mjs",
     "test": "vitest run",

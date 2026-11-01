@@ -41,9 +41,11 @@ async function main() {
         };
         const started = performance.now(),
           framesBefore = v.renderer.info.render.frame;
+        Object.defineProperty(v, 'animationTime', { configurable: true, writable: true, value: 7 });
         let animation = 0;
         const advance = () => {
-          v.clock.elapsedTime = 7 + (performance.now() - started) / 1000;
+          v.animationTime = 7 + (performance.now() - started) / 1000;
+          v.requestRender();
           animation = requestAnimationFrame(advance);
         };
         recorder.start(250);

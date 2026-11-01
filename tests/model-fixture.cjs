@@ -1,7 +1,14 @@
 const { launch } = require('./surface-fixture.cjs');
 async function setup(
   page,
-  { mode = 'optimized', simple = false, demo = true, performanceMode, samples = 513 } = {},
+  {
+    mode = 'optimized',
+    simple = false,
+    demo = true,
+    performanceMode,
+    displayQuality,
+    samples = 513,
+  } = {},
 ) {
   const url = process.env.EDITOR_URL || 'http://127.0.0.1:5173/';
   await page.route(url, (route) =>
@@ -13,7 +20,7 @@ async function setup(
   await page.goto(url);
   await page.unroute(url);
   await page.evaluate(
-    async ({ mode, simple, demo, performanceMode, samples }) => {
+    async ({ mode, simple, demo, performanceMode, displayQuality, samples }) => {
       const source = await (await fetch('/src/renderer/models.ts')).text();
       const resource = source.match(
         /from\s*["']([^"']*\/builtin-resources\.ts(?:\?[^"']*)?)["']/,
@@ -85,7 +92,11 @@ async function setup(
         session.view.territories = false;
         session.view.factions = false;
       }
-      const viewport = new EditorViewport(host, session, { modelMode: mode, performanceMode });
+      const viewport = new EditorViewport(host, session, {
+        modelMode: mode,
+        performanceMode,
+        displayQuality,
+      });
       let plane, material;
       if (simple) {
         plane = new THREE.PlaneGeometry(2048, 2048);
@@ -112,7 +123,7 @@ async function setup(
         },
       };
     },
-    { mode, simple, demo, performanceMode, samples },
+    { mode, simple, demo, performanceMode, displayQuality, samples },
   );
   await page.waitForFunction(
     () => {

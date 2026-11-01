@@ -63,6 +63,7 @@ const { randomUUID } = require('node:crypto');
     assert.equal(preferences.nodeIntegration, false);
     assert.equal(preferences.contextIsolation, true);
     assert.equal(preferences.sandbox, true);
+    assert.equal(await page.evaluate(() => window.mapEditorDesktop.performanceProbeEnabled), false);
     assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
     assert.equal(await page.evaluate(() => 'invoke' in window.mapEditorDesktop), false);
     assert.equal(await page.getByText('近期工程').count(), 0);
@@ -79,6 +80,7 @@ const { randomUUID } = require('node:crypto');
     assert.equal(await page.getByLabel('导入示例工程').isChecked(), false);
     await page.getByRole('button', { name: '创建工程', exact: true }).click();
     await page.getByRole('button', { name: '保存工程', exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => typeof window.mapEditorPerformance), 'undefined');
     const blankPath = path.join(base, '空白地图');
     const blank = JSON.parse(await fs.readFile(path.join(blankPath, 'project.map3dproj'), 'utf8'));
     const blankObjects = JSON.parse(

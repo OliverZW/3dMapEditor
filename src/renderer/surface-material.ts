@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { MapDocument, SurfaceImage, SurfaceMaterialPack } from '../core/types';
 import { surfaceImageBytes } from '../io/surface-resources';
 import { surfaceShader } from './surface-shader';
+import { simpleSurfaceShader } from './simple-surface-shader';
+import { acquireSurfaceMacro } from './surface-macro';
 import { SurfaceRegions } from './surface-regions';
 import type { SurfacePageCache } from './surface-page-cache';
 import type { RenderBounds } from '../application/render-invalidation';
@@ -11,6 +13,7 @@ interface TextureLease {
   release: () => void;
 }
 class SurfaceTexturePool {
+  constructor(private anisotropy: number) {}
   private entries = new Map<
     string,
     { refs: number; promise: Promise<THREE.Texture>; texture?: THREE.Texture }
@@ -29,7 +32,7 @@ class SurfaceTexturePool {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.magFilter = THREE.LinearFilter;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.anisotropy = 4;
+        texture.anisotropy = this.anisotropy;
         texture.needsUpdate = true;
         created.texture = texture;
         return texture;
@@ -69,9 +72,9 @@ class SurfaceTexturePool {
 
 /** 地表网格不持有材质真相；只消费文档权重与不可变材质资源。 */
 export class SurfaceMaterial {
-  readonly material = new THREE.MeshStandardMaterial({ roughness: 0.96 });
+  readonly material: THREE.MeshStandardMaterial | THREE.MeshLambertMaterial;
   readonly regions = new SurfaceRegions();
-  private pool = new SurfaceTexturePool();
+  private pool: SurfaceTexturePool;
   private weight = new THREE.DataTexture(new Uint8Array([255, 0, 0, 0]), 1, 1);
   private fallback: THREE.DataTexture[] = [];
   private leases: TextureLease[] = [];
@@ -82,6 +85,7 @@ export class SurfaceMaterial {
   ready = false;
   resourceVersion = 0;
   private cache?: SurfacePageCache;
+  private macro?: ReturnType<typeof acquireSurfaceMacro>;
   readonly uniforms: Record<
     string,
     { value: THREE.Texture | THREE.Vector2 | THREE.Vector4 | number }
@@ -90,7 +94,16 @@ export class SurfaceMaterial {
     private report: (error: string) => void,
     readonly original = false,
     sharedGradients = false,
+    private display: { anisotropy: number; normalDetail: boolean; simplifiedSurface?: boolean } = {
+      anisotropy: 4,
+      normalDetail: true,
+    },
+    private changed: () => void = () => {},
   ) {
+    this.material = display.simplifiedSurface
+      ? new THREE.MeshLambertMaterial()
+      : new THREE.MeshStandardMaterial({ roughness: 0.96 });
+    this.pool = new SurfaceTexturePool(display.anisotropy);
     this.weight.magFilter = this.weight.minFilter = THREE.LinearFilter;
     this.weight.generateMipmaps = false;
     this.weight.flipY = false;
@@ -105,6 +118,10 @@ export class SurfaceMaterial {
       uSurfaceDetail: { value: 0.25 },
       uSurfaceSlope: { value: 1 },
     };
+    if (display.simplifiedSurface) {
+      this.macro = acquireSurfaceMacro();
+      this.uniforms.uSurfaceMacro = { value: this.macro.texture };
+    }
     const colors = [
       [113, 131, 90],
       [149, 131, 96],
@@ -112,7 +129,7 @@ export class SurfaceMaterial {
       [194, 177, 130],
     ];
     for (let i = 0; i < 4; i++) {
-      for (const kind of ['Color', 'Normal']) {
+      for (const kind of display.simplifiedSurface ? ['Color'] : ['Color', 'Normal']) {
         const pixel = kind === 'Color' ? colors[i] : [128, 128, 255];
         const texture = new THREE.DataTexture(new Uint8Array([...pixel, 255]), 1, 1);
         texture.colorSpace = kind === 'Color' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -121,7 +138,9 @@ export class SurfaceMaterial {
         this.uniforms[`uSurface${kind}${i}`] = { value: texture };
       }
     }
-    const { declarations, color, normal } = surfaceShader(!original, sharedGradients);
+    const { declarations, color, normal } = display.simplifiedSurface
+      ? simpleSurfaceShader
+      : surfaceShader(!original, sharedGradients);
     this.material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, this.uniforms);
       shader.vertexShader = shader.vertexShader
@@ -140,11 +159,13 @@ export class SurfaceMaterial {
       this.cache?.install(shader);
     };
     this.material.customProgramCacheKey = () =>
-      original
-        ? 'surface-original-v2'
-        : sharedGradients
-          ? 'surface-shared-gradients-v1'
-          : 'surface-exact-v3';
+      display.simplifiedSurface
+        ? 'surface-simple-xz-v1'
+        : original
+          ? 'surface-original-v2'
+          : sharedGradients
+            ? 'surface-shared-gradients-v1'
+            : 'surface-exact-v3';
   }
   useCache(cache: SurfacePageCache) {
     this.cache = cache;
@@ -152,7 +173,7 @@ export class SurfaceMaterial {
     this.material.needsUpdate = true;
   }
   update(doc: MapDocument, bounds?: RenderBounds) {
-    this.regions.update(doc, bounds);
+    if (!this.display.simplifiedSurface) this.regions.update(doc, bounds);
     this.uniforms.uSurfaceRegions.value = this.regions.texture;
     this.uniforms.uSurfaceRegionSize.value = this.regions.size;
     const n = doc.settings.samples;
@@ -178,17 +199,26 @@ export class SurfaceMaterial {
     );
     this.updateSettings(doc.surfaceMaterial);
     const key = doc.surfaceMaterial.layers
-      .map((layer) => layer.color.hash + layer.normal.hash)
+      .map((layer) => layer.color.hash + (this.display.simplifiedSurface ? '' : layer.normal.hash))
       .join(':');
     if (this.key !== key) {
       this.key = key;
       const generation = ++this.generation;
       this.ready = false;
       this.pending.forEach((lease) => lease.release());
-      const leases = doc.surfaceMaterial.layers.flatMap((layer) => [
-        this.pool.acquire(layer.color, true),
-        this.pool.acquire(layer.normal, false),
-      ]);
+      const requests = doc.surfaceMaterial.layers.flatMap((layer, index) => {
+        const color = {
+          uniform: `uSurfaceColor${index}`,
+          lease: this.pool.acquire(layer.color, true),
+        };
+        return this.display.simplifiedSurface
+          ? [color]
+          : [
+              color,
+              { uniform: `uSurfaceNormal${index}`, lease: this.pool.acquire(layer.normal, false) },
+            ];
+      });
+      const leases = requests.map((request) => request.lease);
       this.pending = leases;
       void Promise.all(leases.map((lease) => lease.promise))
         .then((textures) => {
@@ -197,10 +227,10 @@ export class SurfaceMaterial {
             return;
           }
           textures.forEach((texture, i) => {
-            this.uniforms[`uSurface${i % 2 ? 'Normal' : 'Color'}${Math.floor(i / 2)}`].value =
-              texture;
+            this.uniforms[requests[i].uniform].value = texture;
           });
           this.ready = true;
+          this.changed();
           this.resourceVersion++;
           this.leases.forEach((lease) => lease.release());
           this.leases = leases;
@@ -220,7 +250,7 @@ export class SurfaceMaterial {
   }
   updateSettings(settings: Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>) {
     this.uniforms.uSurfaceScale.value = settings.scale;
-    this.uniforms.uSurfaceDetail.value = settings.detail;
+    this.uniforms.uSurfaceDetail.value = this.display.normalDetail ? settings.detail : 0;
     this.uniforms.uSurfaceSlope.value = settings.slopeRock ? 1 : 0;
   }
   dispose() {
@@ -231,6 +261,7 @@ export class SurfaceMaterial {
     this.pending = [];
     this.weight.dispose();
     this.regions.dispose();
+    this.macro?.release();
     this.fallback.forEach((texture) => texture.dispose());
     this.material.dispose();
   }

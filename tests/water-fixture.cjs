@@ -99,8 +99,11 @@ async function fixture(
       document.body.appendChild(host);
       const viewport = new EditorViewport(host, session, { surfaceMode });
       // 只在测试实例冻结时钟；应用没有测试开关或固定时间。
-      viewport.clock.getDelta = () => 0;
-      viewport.clock.elapsedTime = 7;
+      Object.defineProperty(viewport, 'animationTime', {
+        configurable: true,
+        get: () => 7,
+        set: () => {},
+      });
       window.waterFixture = { viewport, session, host };
     },
     { demo, samples, width, depth, surfaceMode },
@@ -127,6 +130,7 @@ async function camera(page, view) {
     viewport.camera.position.set(...positions[view]);
     viewport.camera.lookAt(viewport.navigation.rig.target);
     viewport.camera.updateMatrixWorld(true);
+    viewport.requestRender();
   }, view);
   await page.waitForTimeout(350);
 }

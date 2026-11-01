@@ -55,6 +55,28 @@ function follow(file) {
   reachable.add(file);
   const source = program.getSourceFile(file);
   if (!source) return;
+  // Vite 的独立 Worker 是 new Worker(new URL('./entry.ts', import.meta.url))，不是静态 import。
+  function followWorker(node) {
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'Worker'
+    ) {
+      const url = node.arguments?.[0];
+      if (
+        url &&
+        ts.isNewExpression(url) &&
+        ts.isIdentifier(url.expression) &&
+        url.expression.text === 'URL'
+      ) {
+        const entry = url.arguments?.[0];
+        if (entry && ts.isStringLiteral(entry) && entry.text.startsWith('.'))
+          follow(path.resolve(path.dirname(file), entry.text));
+      }
+    }
+    ts.forEachChild(node, followWorker);
+  }
+  followWorker(source);
   const imports = ts.preProcessFile(source.text).importedFiles;
   for (const dependency of imports) {
     const resolved = ts.resolveModuleName(

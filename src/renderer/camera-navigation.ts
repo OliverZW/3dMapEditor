@@ -30,6 +30,7 @@ export class CameraNavigation {
   constructor(
     private canvas: HTMLCanvasElement,
     private commands: {
+      changed?: () => void;
       focus: () => void;
       frameAll: () => void;
       toggleGrid: () => void;
@@ -59,6 +60,15 @@ export class CameraNavigation {
     };
   };
   getSnapshot = () => this.state;
+  captureView() {
+    return { rig: this.rig.captureView(), speed: this.state.speed };
+  }
+  restoreView(view: ReturnType<CameraNavigation['captureView']>) {
+    this.stop();
+    this.rig.restoreView(view.rig);
+    this.state = { ...this.state, speed: view.speed };
+    this.emit();
+  }
   subscribePose(listener: () => void) {
     this.poses.add(listener);
     listener();
@@ -66,7 +76,16 @@ export class CameraNavigation {
       this.poses.delete(listener);
     };
   }
+  get needsFrame() {
+    return (
+      !this.blocked &&
+      (this.rig.animating ||
+        ((this.state.gesture === 'fly' || (this.state.gesture === 'pan' && this.keyboardPan)) &&
+          ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE'].some((key) => this.keys.has(key))))
+    );
+  }
   private emit() {
+    this.commands.changed?.();
     this.state = {
       ...this.state,
       projection: this.rig.projection,
@@ -160,6 +179,7 @@ export class CameraNavigation {
     else if (this.state.gesture === 'orbit') this.rig.orbit(dx, dy);
     else if (this.state.gesture === 'pan') this.rig.pan(dx, dy, this.canvas.clientHeight);
     else if (this.state.gesture === 'dolly') this.rig.dolly(dy * 0.01);
+    this.commands.changed?.();
     if (this.state.orientation !== this.rig.orientation) this.emit();
   };
   private pointerUp = (event: PointerEvent) => {
@@ -181,7 +201,10 @@ export class CameraNavigation {
         ),
       };
       this.emit();
-    } else this.rig.dolly(event.deltaY * 0.001);
+    } else {
+      this.rig.dolly(event.deltaY * 0.001);
+      this.commands.changed?.();
+    }
   };
   private contextMenu = (event: Event) => event.preventDefault();
   private keyDown = (event: KeyboardEvent) => {
@@ -206,6 +229,7 @@ export class CameraNavigation {
       ) {
         this.accelerating = event.shiftKey;
         this.keys.add(event.code);
+        this.commands.changed?.();
         event.preventDefault();
         event.stopImmediatePropagation();
         return;

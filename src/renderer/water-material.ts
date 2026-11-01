@@ -21,6 +21,8 @@ export class WaterMaterial {
   constructor(
     onError: (message: string) => void,
     private resources: WaterMaterialPack = defaultWaterMaterial(),
+    private anisotropy = 4,
+    private changed: () => void = () => {},
   ) {
     this.material.setValues(resources.material);
     this.material.name = 'RiverWater';
@@ -214,7 +216,7 @@ export class WaterMaterial {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
-        texture.anisotropy = 4;
+        texture.anisotropy = this.anisotropy;
         texture.needsUpdate = true;
         return texture;
       }),
@@ -228,6 +230,7 @@ export class WaterMaterial {
     this.normal.value = (results[0] as PromiseFulfilledResult<THREE.Texture>).value;
     this.mask.value = (results[1] as PromiseFulfilledResult<THREE.Texture>).value;
     this.ready.value = 1;
+    this.changed();
   }
 
   private release(texture: THREE.Texture) {

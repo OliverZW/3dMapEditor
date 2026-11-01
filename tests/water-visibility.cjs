@@ -20,7 +20,6 @@ async function measure(page) {
       return ctx.getImageData(0, 0, width, height).data;
     };
     const render = (time) => {
-      v.clock.elapsedTime = time;
       v.waterSurface.setTime(time);
       v.renderer.render(v.scene, v.camera);
       return read();

@@ -5,12 +5,14 @@ import type { EditorSession } from '../application/editor-session';
 import type { ModelAsset, Point, Tree } from '../core/types';
 import { hexDisk, hexWorld, worldHex } from '../core/hex';
 import { riverCurve, sampleHeight } from '../core/terrain';
-import { generateGrass, vegetationFilter } from '../core/vegetation';
+import { vegetationFilter } from '../core/vegetation';
 import { ModelLibrary } from './models';
 import { ModelBatches } from './model-batches';
 import { ModelRenderCounter } from './model-render-counter';
 import type { ModelInstance } from './model-batches';
 import { pickTerrain } from '../core/terrain-picking';
+import { LogicMaterials } from './logic-materials';
+import { GrassPlacementTasks } from '../application/grass-placement-tasks';
 import { buildLogicOverlay } from './logic-overlay';
 import { buildResizeOverlay } from './resize-overlay';
 import { placeSiteModel } from './site-transform';
@@ -19,13 +21,23 @@ import { TerrainGeometry } from './terrain-geometry';
 import { SurfacePageCache } from './surface-page-cache';
 import { WaterSurface } from './water-surface';
 import type { RenderBounds } from '../application/render-invalidation';
+import { DemandFrameLoop } from './demand-frame-loop';
+import { DISPLAY_QUALITIES, displayPixelRatio } from './display-quality';
+import type { DisplayQuality } from './display-quality';
 export interface ViewportRenderOptions {
+  /** 应用层显式传入本机偏好；独立渲染夹具默认保留原高画质路径。 */
+  displayQuality?: DisplayQuality;
+  /** 显式诊断工具的单变量对照，不改变产品默认值。 */
+  diagnosticAntialias?: boolean;
+  /** 第 3 步单变量对照：保持流畅档设置，使用第 2 步地表。 */
+  diagnosticPreviousSurface?: boolean;
   surfaceMode?: 'original' | 'optimized' | 'cached';
   modelMode?: 'original' | 'optimized';
   /** 开发对照：baseline 保留第二轮之前的渲染和上传路径。 */
   performanceMode?: 'baseline' | 'candidate';
 }
 interface RenderStats {
+  idle: boolean;
   fps: number;
   calls: number;
   triangles: number;
@@ -35,6 +47,22 @@ interface RenderStats {
   terrainMeshes: number;
 }
 export class EditorViewport {
+  get displayQuality() {
+    return this.renderOptions.displayQuality ?? 'high';
+  }
+  get diagnosticDisplay() {
+    return {
+      quality: this.displayQuality,
+      surfaceMaterial: this.surfaceMaterial.material.type,
+      surfaceProgram: this.surfaceMaterial.material.customProgramCacheKey(),
+      shadowSize: this.sun.shadow.mapSize.x,
+      normalDetail: this.surfaceMaterial.uniforms.uSurfaceDetail.value,
+      anisotropy: (this.surfaceMaterial.uniforms.uSurfaceColor0.value as THREE.Texture).anisotropy,
+    };
+  }
+  get interactionActive() {
+    return this.pressed || this.navigation.getSnapshot().gesture !== 'idle';
+  }
   readonly scene = new THREE.Scene();
   readonly renderer: THREE.WebGLRenderer;
   readonly library = new ModelLibrary();
@@ -43,6 +71,7 @@ export class EditorViewport {
     return this.navigation.rig.camera;
   }
   private inputBlocked = false;
+  private hostVisible = true;
   private ground: THREE.Mesh;
   private terrainGeometry = new TerrainGeometry();
   private terrainDirty = true;
@@ -82,7 +111,32 @@ export class EditorViewport {
   );
   private previewKey = '';
   private logicKey = '';
-  private frame = 0;
+  private loop: DemandFrameLoop;
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  private unsubscribeNavigation: () => void;
+  private renderedFrames = 0;
+  private visibleWater = false;
+  private visibleGrass = false;
+  private lastFrameTime = 0;
+  private elapsed = 0;
+  private animationTime = 0;
+  /** 直接操作相机的开发夹具也必须显式请求刷新。 */
+  requestRender = () => {
+    clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    this.loop?.invalidate();
+  };
+  get diagnosticScheduling() {
+    return {
+      renderedFrames: this.renderedFrames,
+      pending: this.loop.pending,
+      idle: this.stats.idle,
+      hostVisible: this.hostVisible,
+      visibleWater: this.visibleWater,
+      visibleGrass: this.visibleGrass,
+      continuousProbe: !!this.diagnosticFrame,
+    };
+  }
   private disposed = false;
   private seenRevision = -1;
   private seenSurfaceLayerPreview: EditorSession['surfaceLayerPreview'] = null;
@@ -93,21 +147,26 @@ export class EditorViewport {
   private generation = 0;
   private instanceBuilds = 0;
   private resizeObserver: ResizeObserver;
+  private pixelRatioQuery?: MediaQueryList;
   private unsubscribe: () => void;
   private unsubscribeRender: () => void;
   private surfaceDirty = true;
   private surfaceBounds: RenderBounds | undefined;
   private instancesDirty = true;
   private shadowVisibility = '';
+  private viewStateKey = '';
   private cursorKey = '';
   private pressed = false;
   private lastGrassCenter = new THREE.Vector3(Infinity, 0, 0);
-  private clock = new THREE.Clock();
   private fpsTime = 0;
   private frames = 0;
   private lastStats = 0;
   private grassTime = { value: 0 };
+  private grassTasks = new GrassPlacementTasks();
+  private grassMaterials = new Map<THREE.Material, THREE.Material>();
+  private logicMaterials = new LogicMaterials();
   stats: RenderStats = {
+    idle: false,
     fps: 0,
     calls: 0,
     triangles: 0,
@@ -117,18 +176,40 @@ export class EditorViewport {
     terrainMeshes: 1,
   };
   onStats?: (stats: RenderStats) => void;
+  diagnosticFrame?: { begin(now: number): void; end(cpuMs: number): void };
+  get diagnosticReady() {
+    return (
+      this.seenRevision === this.session.revision &&
+      this.surfaceMaterial.ready &&
+      !!this.treeModelKey &&
+      !!this.siteModelKey &&
+      !this.instanceBuilds &&
+      !this.instanceTimer &&
+      this.treeModels.ready &&
+      this.siteModels.ready
+    );
+  }
+  setDiagnosticGround(mode: 'current' | 'hidden' | 'basic', basic: THREE.Material) {
+    this.ground.visible = mode !== 'hidden';
+    this.requestRender();
+    this.ground.material = mode === 'basic' ? basic : this.surfaceMaterial.material;
+  }
   constructor(
     private container: HTMLElement,
     private session: EditorSession,
     readonly renderOptions: ViewportRenderOptions = {},
   ) {
+    const preset = DISPLAY_QUALITIES[this.displayQuality];
+    const display = {
+      ...preset,
+      simplifiedSurface: preset.simplifiedSurface && !renderOptions.diagnosticPreviousSurface,
+    };
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: renderOptions.diagnosticAntialias ?? display.antialias,
       alpha: false,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = display.shadows;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.autoUpdate = renderOptions.surfaceMode === 'original';
     this.renderer.shadowMap.needsUpdate = true;
@@ -142,8 +223,8 @@ export class EditorViewport {
     this.scene.add(new THREE.HemisphereLight(0xd8e6de, 0x62634d, 2.3));
     const sun = new THREE.DirectionalLight(0xffe8bd, 3);
     sun.position.set(-400, 800, 300);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.castShadow = display.shadows;
+    sun.shadow.mapSize.set(display.shadowSize, display.shadowSize);
     Object.assign(sun.shadow.camera, {
       left: -1000,
       right: 1000,
@@ -160,17 +241,27 @@ export class EditorViewport {
       (error) => this.session.message(error, true),
       renderOptions.surfaceMode === 'original',
       renderOptions.performanceMode === 'candidate',
+      display,
+      this.requestRender,
     );
-    if (renderOptions.surfaceMode === 'cached') {
+    if (renderOptions.surfaceMode === 'cached' && !display.simplifiedSurface) {
       this.surfaceCache = new SurfacePageCache(this.renderer, this.surfaceMaterial);
       this.surfaceMaterial.useCache(this.surfaceCache);
     }
-    this.waterSurface = new WaterSurface((error) => this.session.message(error, true));
+    this.waterSurface = new WaterSurface(
+      (error) => this.session.message(error, true),
+      display.anisotropy,
+      this.requestRender,
+      () => {
+        this.visibleWater = true;
+      },
+    );
     this.water = this.waterSurface.group;
     this.ground = new THREE.Mesh(this.terrainGeometry, this.surfaceMaterial.material);
     this.ground.name = 'ContinuousTerrain';
     this.ground.receiveShadow = true;
     const modelChanged = () => {
+      this.requestRender();
       this.renderer.shadowMap.needsUpdate = true;
     };
     const modelError = (error: unknown) => {
@@ -214,21 +305,28 @@ export class EditorViewport {
       toggleGrid: () => this.session.setViewLayer('hex', !this.session.view.hex),
       editing: () => this.pressed,
       cancelEditing: () => this.pointerCancel(),
+      changed: this.requestRender,
     });
+    this.unsubscribeNavigation = this.navigation.subscribe(() => {
+      if (this.navigation.getSnapshot().gesture !== 'idle' && this.session.hover)
+        this.session.hoverAt(null);
+    });
+    this.loop = new DemandFrameLoop(this.animate, this.sleep);
+    document.addEventListener('visibilitychange', this.visibilityChanged);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
-    this.resize();
+    this.watchPixelRatio();
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointerdown', this.pointerDown);
     canvas.addEventListener('pointermove', this.pointerMove);
+    canvas.addEventListener('pointerleave', this.pointerLeave);
     canvas.addEventListener('pointerup', this.pointerUp);
     canvas.addEventListener('pointercancel', this.pointerCancel);
     window.addEventListener('blur', this.pointerCancel);
-    this.unsubscribe = session.subscribeView(() => {
-      this.updateVisibility();
-    });
+    this.unsubscribe = session.subscribeView(this.refreshView);
     this.unsubscribeRender = session.subscribeRender((change) => {
       if (change.documentVersion !== session.documentVersion) return;
+      this.requestRender();
       if (change.kind !== 'instances') this.surfaceCache?.invalidate(change);
       if (change.kind === 'terrain' || change.kind === 'all') {
         if (!this.terrainDirty) this.terrainBounds = change.bounds;
@@ -244,6 +342,7 @@ export class EditorViewport {
       }
       if (change.kind === 'all' || change.kind === 'terrain' || change.kind === 'instances') {
         this.instancesDirty = true;
+        this.grassTasks.cancel();
         this.generation++;
         this.treeModels.invalidate();
         this.siteModels.invalidate();
@@ -265,18 +364,52 @@ export class EditorViewport {
         this.surfaceDirty = true;
       }
     });
-    this.animate();
+    this.refreshView();
+    this.loop.setActive(!document.hidden);
   }
+  private visibilityChanged = () => {
+    this.lastFrameTime = 0;
+    this.loop.setActive(this.hostVisible && !document.hidden);
+  };
+  private sleep = () => {
+    if (this.disposed) return;
+    this.lastFrameTime = 0;
+    // 合并短暂停顿，避免每个鼠标事件都推动 React 的活动/静止切换。
+    if (this.idleTimer === undefined)
+      this.idleTimer = setTimeout(() => {
+        this.idleTimer = undefined;
+        if (this.disposed || this.loop.pending) return;
+        this.stats.idle = true;
+        this.stats.fps = 0;
+        this.frames = 0;
+        this.fpsTime = this.lastStats = this.elapsed;
+        this.onStats?.({ ...this.stats });
+      }, 150);
+  };
+  private watchPixelRatio = () => {
+    this.pixelRatioQuery?.removeEventListener('change', this.watchPixelRatio);
+    this.pixelRatioQuery = matchMedia(`(resolution: ${devicePixelRatio}dppx)`);
+    this.pixelRatioQuery.addEventListener('change', this.watchPixelRatio);
+    this.resize();
+  };
   private resize() {
     const w = this.container.clientWidth,
       h = this.container.clientHeight;
     if (!w || !h) return;
+    this.renderer.setPixelRatio(displayPixelRatio(this.displayQuality, devicePixelRatio, w, h));
     this.renderer.setSize(w, h);
     this.navigation.rig.resize(w, h);
+    this.requestRender();
+  }
+  setHostVisible(visible: boolean) {
+    if (this.hostVisible === visible) return;
+    this.hostVisible = visible;
+    this.navigation.setBlocked(this.inputBlocked || !visible);
+    this.visibilityChanged();
   }
   setInputBlocked(blocked: boolean) {
     this.inputBlocked = blocked;
-    this.navigation.setBlocked(blocked);
+    this.navigation.setBlocked(blocked || !this.hostVisible);
   }
   focusSelection() {
     const site =
@@ -346,7 +479,9 @@ export class EditorViewport {
       child.traverse((obj) => {
         if (obj instanceof THREE.Mesh || obj instanceof THREE.Line) {
           obj.geometry.dispose();
-          for (const m of Array.isArray(obj.material) ? obj.material : [obj.material]) m.dispose();
+          if (!obj.userData.sharedMaterial)
+            for (const m of Array.isArray(obj.material) ? obj.material : [obj.material])
+              m.dispose();
         }
       });
       group.remove(child);
@@ -377,6 +512,7 @@ export class EditorViewport {
         this.session.view,
         this.session.tool === 'sites' ? this.session.selectedSite : null,
         'ranges',
+        this.logicMaterials,
       ),
     );
   }
@@ -472,19 +608,19 @@ export class EditorViewport {
         committed = false;
       const center = this.navigation.rig.target.clone();
       try {
-        for (const asset of doc.assets.filter((asset) => asset.kind === 'grass')) {
-          const instances: Tree[] = [];
-          for (const layer of doc.grass.filter((layer) => layer.assetId === asset.id))
-            instances.push(
-              ...generateGrass(
-                doc,
-                heights,
-                layer,
-                { x: center.x, z: center.z },
-                80,
-                50000 - grass - instances.length,
-              ),
-            );
+        const placements = await this.grassTasks.run(
+          doc,
+          heights,
+          { x: center.x, z: center.z },
+          {
+            documentVersion: this.session.documentVersion,
+            terrainRevision: this.session.terrainRevision,
+            grassRevision: this.grassRevision,
+          },
+        );
+        if (!placements || !current()) return;
+        for (const { assetId, instances } of placements) {
+          const asset = doc.assets.find((asset) => asset.id === assetId)!;
           if (!instances.length) continue;
           const source = await this.library.get(asset);
           if (!current()) return;
@@ -494,6 +630,19 @@ export class EditorViewport {
         if (!current()) return;
         this.clearInstances(this.grassModels);
         this.grassModels.add(group);
+        const used = new Set<THREE.Material>();
+        group.traverse((object) => {
+          if (object instanceof THREE.Mesh)
+            for (const material of Array.isArray(object.material)
+              ? object.material
+              : [object.material])
+              used.add(material);
+        });
+        for (const [source, material] of this.grassMaterials)
+          if (!used.has(material)) {
+            material.dispose();
+            this.grassMaterials.delete(source);
+          }
         committed = true;
         this.stats.grass = grass;
         this.grassModelKey = grassKey;
@@ -523,6 +672,8 @@ export class EditorViewport {
       let material = part.material;
       {
         const mats = (Array.isArray(material) ? material : [material]).map((m) => {
+          const existing = this.grassMaterials.get(m);
+          if (existing) return existing;
           const clone = m.clone();
           clone.transparent = true;
           clone.onBeforeCompile = (shader: Parameters<THREE.Material['onBeforeCompile']>[0]) => {
@@ -543,6 +694,7 @@ export class EditorViewport {
                 '#include <color_fragment>\ndiffuseColor.a*=1.-smoothstep(60.,80.,vGrassDistance);',
               );
           };
+          this.grassMaterials.set(m, clone);
           return clone;
         });
         material = Array.isArray(material) ? mats : mats[0];
@@ -550,7 +702,15 @@ export class EditorViewport {
       const mesh = new THREE.InstancedMesh(part.geometry, material, instances.length);
       mesh.name = 'GrassBatch';
       this.modelRenderCounter.track(mesh);
-      mesh.userData.ownedMaterial = true;
+      const beforeRender = mesh.onBeforeRender;
+      mesh.onBeforeRender = (...args) => {
+        beforeRender.apply(mesh, args);
+        // 草在着色器中 80 米外完全透明；包围球保守覆盖弯曲和实例范围。
+        const sphere = mesh.boundingSphere;
+        if (sphere && this.camera.position.distanceTo(sphere.center) < sphere.radius + 80)
+          this.visibleGrass = true;
+      };
+      mesh.userData.ownedMaterial = false;
       mesh.castShadow = false;
       mesh.receiveShadow = true;
       mesh.frustumCulled = true;
@@ -690,7 +850,43 @@ export class EditorViewport {
       site?.scale ?? 1,
     );
     this.siteGhost.add(ghost);
+    this.requestRender();
   }
+  private refreshView = () => {
+    const s = this.session;
+    // 状态栏/自动草稿通知不改变三维画面；只订阅实际显示输入，避免待机被 UI 计时器唤醒。
+    const key = JSON.stringify([
+      s.documentVersion,
+      s.revision,
+      s.view,
+      s.tool,
+      s.treeMode,
+      s.brush,
+      s.hover,
+      s.selectedSite,
+      s.selectedTree,
+      s.selectedRiver,
+      s.selectedFaction,
+      s.surfacePreview,
+      s.surfaceLayerPreview && [
+        s.surfaceLayerPreview.index,
+        s.surfaceLayerPreview.asset.id,
+        s.surfaceLayerPreview.asset.color.hash,
+        s.surfaceLayerPreview.asset.normal.hash,
+        s.surfaceLayerPreview.asset.meters,
+      ],
+      s.resizePreview?.document.settings,
+      s.riverPreview,
+      s.riverPoint,
+      s.sitePreview,
+      s.siteMode,
+      s.assetId,
+    ]);
+    if (key === this.viewStateKey && this.seenDoc === s.doc) return;
+    this.viewStateKey = key;
+    this.updateVisibility();
+    this.requestRender();
+  };
   private updateVisibility() {
     const key = `${this.session.view.trees}:${this.session.view.sites}`;
     if (key !== this.shadowVisibility) {
@@ -875,6 +1071,9 @@ export class EditorViewport {
     if (this.pressed && p) this.session.pointerMove(p, e.shiftKey);
     else this.session.hoverAt(p);
   };
+  private pointerLeave = () => {
+    if (!this.pressed) this.session.hoverAt(null);
+  };
   private pointerUp = (e: PointerEvent) => {
     if (!this.pressed) return;
     this.pressed = false;
@@ -887,13 +1086,21 @@ export class EditorViewport {
     this.session.cancelStroke();
   };
   private animate = () => {
-    if (this.disposed) return;
-    this.frame = requestAnimationFrame(this.animate);
-    const delta = this.clock.getDelta(),
-      elapsed = this.clock.elapsedTime;
+    if (this.disposed) return false;
+    const diagnosticStarted = this.diagnosticFrame ? performance.now() : 0;
+    this.diagnosticFrame?.begin(diagnosticStarted);
+    const now = performance.now();
+    const delta = this.lastFrameTime ? Math.min(0.1, (now - this.lastFrameTime) / 1000) : 1 / 60;
+    this.lastFrameTime = now;
+    // 待机/隐藏期间冻结动画时间，唤醒首帧不把长间隔灌入相机动画或 FPS。
+    const elapsed = (this.elapsed = now / 1000);
+    const wasIdle = this.stats.idle;
+    if (wasIdle) this.fpsTime = this.lastStats = elapsed;
+    this.animationTime += delta;
+    this.stats.idle = false;
     this.navigation.update(delta);
-    this.waterSurface.setTime(elapsed);
-    this.grassTime.value = elapsed;
+    this.waterSurface.setTime(this.animationTime);
+    this.grassTime.value = this.animationTime;
     if (this.seenRevision !== this.session.revision || this.seenDoc !== this.session.doc) {
       // 工程切换、失败回滚也可能只替换文档对象，不能继续引用旧权重数组。
       if (this.seenDoc !== this.session.doc) {
@@ -940,6 +1147,7 @@ export class EditorViewport {
               )
               .finally(() => {
                 this.instanceBuilds--;
+                this.requestRender();
               });
           }, 50);
       }
@@ -953,9 +1161,15 @@ export class EditorViewport {
       this.lastGrassCenter.copy(this.navigation.rig.target);
       this.instanceTimer = setTimeout(() => {
         this.instanceTimer = null;
-        void this.rebuildInstances(true).catch((e) => {
-          if (!this.disposed) this.session.message(String(e), true);
-        });
+        this.instanceBuilds++;
+        void this.rebuildInstances(true)
+          .catch((e) => {
+            if (!this.disposed) this.session.message(String(e), true);
+          })
+          .finally(() => {
+            this.instanceBuilds--;
+            this.requestRender();
+          });
       }, 200);
     }
     const previewKey = JSON.stringify([
@@ -987,7 +1201,14 @@ export class EditorViewport {
       this.gridKey = gridKey;
       this.clearOwned(this.gridLines);
       this.gridLines.add(
-        buildLogicOverlay(this.session.doc, this.session.heights, this.session.view, null, 'grid'),
+        buildLogicOverlay(
+          this.session.doc,
+          this.session.heights,
+          this.session.view,
+          null,
+          'grid',
+          this.logicMaterials,
+        ),
       );
     }
     this.gridLines.visible = this.session.view.hex;
@@ -1040,35 +1261,50 @@ export class EditorViewport {
     this.treeModels.update(this.camera, this.container.clientHeight, this.session.selectedTree);
     this.siteModels.update(this.camera, this.container.clientHeight, this.session.selectedSite);
     this.modelRenderCounter.reset();
+    this.visibleWater = this.visibleGrass = false;
     this.renderer.render(this.scene, this.camera);
+    this.renderedFrames++;
+    this.stats.calls = this.renderer.info.render.calls;
+    this.stats.triangles = this.renderer.info.render.triangles;
+    this.stats.modelTriangles = this.modelRenderCounter.triangles;
     this.frames++;
     if (elapsed - this.lastStats > 1) {
       this.stats.fps = Math.round(this.frames / (elapsed - this.fpsTime));
       this.fpsTime = elapsed;
       this.frames = 0;
       this.lastStats = elapsed;
-      this.stats.calls = this.renderer.info.render.calls;
-      this.stats.triangles = this.renderer.info.render.triangles;
-      this.stats.modelTriangles = this.modelRenderCounter.triangles;
       this.onStats?.({ ...this.stats });
     }
+    if (wasIdle) this.onStats?.({ ...this.stats });
+    this.diagnosticFrame?.end(performance.now() - diagnosticStarted);
+    return (
+      !!this.diagnosticFrame || this.navigation.needsFrame || this.visibleWater || this.visibleGrass
+    );
   };
   dispose() {
     this.disposed = true;
-    cancelAnimationFrame(this.frame);
+    this.loop.dispose();
+    clearTimeout(this.idleTimer);
+    this.unsubscribeNavigation();
+    document.removeEventListener('visibilitychange', this.visibilityChanged);
     if (this.instanceTimer) clearTimeout(this.instanceTimer);
     this.generation++;
     this.ghostGeneration++;
     this.unsubscribe();
     this.unsubscribeRender();
     this.resizeObserver.disconnect();
+    this.pixelRatioQuery?.removeEventListener('change', this.watchPixelRatio);
     this.navigation.dispose();
     this.treeModels.dispose();
     this.siteModels.dispose();
     this.clearInstances(this.grassModels);
+    this.grassTasks.dispose();
+    this.grassMaterials.forEach((material) => material.dispose());
+    this.grassMaterials.clear();
     this.waterSurface.dispose();
     this.clearOwned(this.logic);
     this.clearOwned(this.gridLines);
+    this.logicMaterials.dispose();
     this.clearOwned(this.preview);
     this.clearOwned(this.siteGhost);
     this.cursor.geometry.dispose();

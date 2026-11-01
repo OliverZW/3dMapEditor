@@ -26,6 +26,27 @@ export class CameraRig {
   get animating() {
     return this.animation !== null;
   }
+  captureView() {
+    return {
+      perspective: this.perspective.clone(),
+      orthographic: this.orthographic.clone(),
+      projection: this.projection,
+      orientation: this.orientation,
+      target: this.target.clone(),
+      framedDiameter: this.framedDiameter,
+    };
+  }
+  restoreView(view: ReturnType<CameraRig['captureView']>) {
+    this.interrupt();
+    this.perspective.copy(view.perspective);
+    this.orthographic.copy(view.orthographic);
+    this.camera = view.projection === 'perspective' ? this.perspective : this.orthographic;
+    this.orientation = view.orientation;
+    this.target.copy(view.target);
+    this.framedDiameter = view.framedDiameter;
+    this.resize(this.aspect, 1);
+    this.camera.updateMatrixWorld(true);
+  }
   resize(width: number, height: number) {
     this.aspect = width / height;
     this.perspective.aspect = this.aspect;

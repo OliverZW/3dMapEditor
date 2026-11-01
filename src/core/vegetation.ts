@@ -6,7 +6,11 @@ export function hashRandom(x: number, z: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
-export function vegetationFilter(doc: MapDocument, heights: Float32Array) {
+export type VegetationDocument = Pick<
+  MapDocument,
+  'settings' | 'grid' | 'rivers' | 'sites' | 'assets'
+>;
+export function vegetationFilter(doc: VegetationDocument, heights: Float32Array) {
   const water = doc.rivers.map((r) => ({ river: r, curve: riverCurve(r) }));
   const footprints = doc.sites.map((site) => {
     const asset = doc.assets.find((a) => a.id === site.assetId)!;
@@ -42,7 +46,7 @@ export function vegetationFilter(doc: MapDocument, heights: Float32Array) {
   };
 }
 export function generateGrass(
-  doc: MapDocument,
+  doc: VegetationDocument,
   heights: Float32Array,
   layer: GrassLayer,
   center: Point,

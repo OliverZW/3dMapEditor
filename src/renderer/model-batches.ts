@@ -47,6 +47,11 @@ export class ModelBatches {
   private disposed = false;
   private viewKey = '';
   private scratch = new THREE.Matrix4();
+  get ready() {
+    return this.assets.every((batch) =>
+      [...batch.pending].every((level) => batch.levels.has(level)),
+    );
+  }
   constructor(
     private library: Pick<ModelLibrary, 'get'> & Partial<Pick<ModelLibrary, 'getForRendering'>>,
     private name: 'TreeBatch' | 'SiteBatch',
@@ -273,6 +278,7 @@ export class ModelBatches {
         this.index(batch, source);
         for (const part of parts) this.group.add(part.mesh);
         this.viewKey = '';
+        this.changed();
       },
       (error) => {
         if (!this.disposed && this.assets.includes(batch)) this.error(error);

@@ -10,6 +10,10 @@ export interface RecentProject {
 }
 /** 仅提供用户通过原生对话框授予的工程能力，不暴露 Node 或任意 IPC。 */
 export interface DesktopBridge {
+  /** 仅由显式启动的发布版性能工具启用，不属于地图数据。 */
+  readonly performanceProbeEnabled?: boolean;
+  /** 只读原生窗口可见性；不提供窗口控制或任意 IPC。 */
+  onWindowVisibility?(callback: (visible: boolean) => void): () => void;
   selectParent(): Promise<DesktopProjectHandle | null>;
   createProject(parentToken: string, name: string): Promise<DesktopProjectHandle>;
   recentList(): Promise<RecentProject[]>;

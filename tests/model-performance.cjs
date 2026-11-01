@@ -68,6 +68,8 @@ const fs = require('node:fs');
             const times = [],
               start = performance.now();
             let previous = start;
+            v.diagnosticFrame = { begin() {}, end() {} };
+            v.requestRender();
             await new Promise((resolve) => {
               const frame = (now) => {
                 times.push(now - previous);
@@ -78,6 +80,8 @@ const fs = require('node:fs');
               requestAnimationFrame(frame);
             });
             const elapsed = performance.now() - start;
+            v.diagnosticFrame = undefined;
+            v.requestRender();
             times.sort((a, b) => a - b);
             return {
               fps: (times.length / elapsed) * 1000,

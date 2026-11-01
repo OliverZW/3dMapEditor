@@ -16,6 +16,7 @@ import { DEFAULT_BRUSH, DEFAULT_VIEW } from '../core/types';
 import { createDocument, validateDocument } from '../core/document';
 import { createDemo } from '../core/demo';
 import { History, snapshot } from '../core/history';
+import type { HistoryArray } from '../core/history';
 import { hexDisk, hexIndex, hexLine, moveSite, paintTerritory, worldHex } from '../core/hex';
 import {
   applySurfaceBrush,
@@ -90,6 +91,7 @@ export class EditorSession {
   hover: Point | null = null;
   busy = false;
   private before: MapDocument | null = null;
+  private strokeArrays: readonly HistoryArray[] | undefined;
   private previous: Point | null = null;
   private listeners = new Set<() => void>();
   private viewListeners = new Set<() => void>();
@@ -229,11 +231,8 @@ export class EditorSession {
           JSON.stringify(before.settings) !== JSON.stringify(this.doc.settings) ||
           JSON.stringify(before.rivers.map(({ name: _name, ...geometry }) => geometry)) !==
             JSON.stringify(this.doc.rivers.map(({ name: _name, ...geometry }) => geometry)) ||
-          before.heights.length !== this.doc.heights.length ||
-          before.heights.some((value, index) => value !== this.doc.heights[index]);
-        const weightsChanged =
-          before.surface.length !== this.doc.surface.length ||
-          before.surface.some((value, index) => value !== this.doc.surface[index]);
+          this.history.arrayChanges.has('heights');
+        const weightsChanged = this.history.arrayChanges.has('surface');
         const materialChanged =
           JSON.stringify(before.surfaceMaterial, (key, value) =>
             key === 'bytes' ? undefined : value,
@@ -242,12 +241,7 @@ export class EditorSession {
             key === 'bytes' ? undefined : value,
           );
         const grassChanged =
-          before.grass.length !== this.doc.grass.length ||
-          before.grass.some(
-            (layer, index) =>
-              layer.density.length !== this.doc.grass[index].density.length ||
-              layer.density.some((value, i) => value !== this.doc.grass[index].density[i]),
-          );
+          before.grass.length !== this.doc.grass.length || this.history.arrayChanges.has('grass');
         const models: NonNullable<RenderInvalidation['models']> = [];
         const assetState = (doc: MapDocument, kinds: string[]) =>
           doc.assets
@@ -811,6 +805,16 @@ export class EditorSession {
       this.assetId = asset.id;
     }
     this.before = snapshot(this.doc);
+    this.strokeArrays =
+      this.tool === 'terrain'
+        ? ['heights']
+        : this.tool === 'surface'
+          ? ['surface']
+          : this.tool === 'grass'
+            ? ['grass']
+            : this.paintingTerritory
+              ? ['owners']
+              : [];
     this.previous = point;
     this.applyBrush(point, shift);
     this.notify(false);
@@ -852,7 +856,12 @@ export class EditorSession {
       doc = this.doc;
     if (this.tool === 'terrain') {
       applyTerrainBrush(doc, point, b, shift);
-      this.heights = deriveHeights(doc);
+      deriveHeights(doc, this.heights, {
+        minX: point.x - b.radius,
+        maxX: point.x + b.radius,
+        minZ: point.z - b.radius,
+        maxZ: point.z + b.radius,
+      });
       this.terrainRevision++;
     } else if (this.tool === 'surface') applySurfaceBrush(doc, point, b);
     else if (this.paintingTerritory)
@@ -951,11 +960,14 @@ export class EditorSession {
       grass: '草丛笔刷',
       sites: '辖区绘制',
     };
-    if (this.history.commit(this.before, this.doc, labels[this.tool] ?? '编辑地图')) {
+    if (
+      this.history.commit(this.before, this.doc, labels[this.tool] ?? '编辑地图', this.strokeArrays)
+    ) {
       this.dirty = true;
       this.status = labels[this.tool] ?? '编辑地图';
     }
     this.before = null;
+    this.strokeArrays = undefined;
     this.previous = null;
     this.notify();
   }
@@ -963,6 +975,7 @@ export class EditorSession {
     if (this.before) {
       this.doc = this.before;
       this.before = null;
+      this.strokeArrays = undefined;
       this.previous = null;
       this.heights = deriveHeights(this.doc);
       this.terrainRevision++;

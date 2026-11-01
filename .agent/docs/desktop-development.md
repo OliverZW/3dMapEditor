@@ -54,6 +54,48 @@ Windows x64 上安装 Node.js 22.12+ 并执行 `npm ci`，运行 `构建.cmd` �
 
 ## 验证命令
 
+### 最终 Windows 发布入口
+
+第 6 步起，Windows 多显卡启动默认优先高性能显卡；显式 `--force_low_power_gpu`／`--force_high_performance_gpu` 仍优先。实现依照 [Electron 官方启动开关](https://www.electronjs.org/docs/latest/api/command-line-switches#--force_high_performance_gpu)，在 ready 前设置，实际路径仍须查看报告。仅有核显或其他驱动的设备不能套用 GTX 1050 的结果；历史第 1～5 步默认 HD 630 的结果保留原条件。
+
+原便携版目录包含 `发布说明.txt`，构建清单同步收录。运行 `npm run prepare:performance-fixture` 后，`npm run test:windows-release-matrix` 串行完成 513²／1025² 与三档的正式矩阵；高精度示例为程序构造目录工程，保留内置资源身份和 LOD。`npm run test:windows-release-interaction` 单独验证最终便携版的平移／环绕／缩放、连续雕刻与取消、撤销重做、原生保存重开及延迟旧草结果跨工程返回；不要与正式采样并行。完整范围与限制见[发布验收](windows-release-performance.md)。
+
+### 发布版性能诊断
+
+当前编辑器首次默认“流畅”，视口左上“画质”选择可切换均衡／高画质并记住本机偏好，具体行为见[显示档位验收](windows-display-quality.md)。性能工具为复现第 1 步原画质，默认显式选择 `--quality=high`；复测产品默认档应指定 `--quality=fast`，也支持 `--quality=balanced`。报告记录实际档位，不能与历史原画质数据混合。
+
+第 3 步后流畅档使用[简化地表](windows-simple-surface.md)。仅做同构建旧地表对照时，使用 `--baseline-only --quality=fast --previous-surface`；此诊断参数不改变产品默认路径或地图，报告通过材质类型和程序标识区分两组。
+
+先构建原有 `dist/mapEdtor-v<版本号>/`，再运行独立采样工具：
+
+```sh
+npm run build
+npm run test:windows-performance -- --quick
+npm run test:windows-performance
+```
+
+构建前关闭该发布目录中的程序，避免 Windows 文件占用。工具默认从当前版本的原 dist 启动真实 EXE；可用 `--exe=<路径>` 指定其他便携版。`--quick` 只做工具验证（预热 1 秒、采样 2 秒、一轮），正式基线预热 5 秒、采样 15 秒、重复三轮；第 6 步起预热也显式连续提交，旧报告的静态等待预热按各自条件保留。采样时保持测试窗口前台，失焦、切到后台、文档变化或上下文丢失会使结果无效。
+
+工具使用 `test-results/tests/windows-performance-<时间戳>/` 中的独立配置及通过首页创建的空白／内置示例工程，不读取用户工程或近期记录。报告保存 EXE 对应 `app.asar` 哈希、输入工程入口哈希、显卡及驱动、显示器缩放、绘制缓冲尺寸、图形后端、CPU／GPU 时间、FPS 和 P95。CPU 墙钟耗时可能包含驱动等待；GPU 计时不可用时为空，不能互相替代。
+
+`--baseline-only` 只测当前画质的静止和固定相机平移。`--force-integrated` 添加低功耗显卡开关用于核显对照，与 `--force-discrete` 互斥。`--force-discrete` 显式添加 Electron 官方的 [`--force_high_performance_gpu`](https://www.electronjs.org/docs/latest/api/command-line-switches#--force_high_performance_gpu)，用于多 GPU 设备对照；实际显卡仍以报告为准，不修改 Windows 配置或产品默认设置。
+
+采样工具通过 `MAP_EDITOR_PERFORMANCE_PROBE=1` 请求主进程向 preload 传递固定诊断标识，随后仅在编辑视口中安装受限的 `window.mapEditorPerformance` 诊断对象。正常启动不安装此对象、不加载诊断模块；该入口不暴露 session、Node、任意 IPC 或文件访问，也不进入地图、历史或导出。每个对照重新创建并释放视口，在相同文档、相机和面板布局中只调整指定渲染因素。具体结果及限制见[发布版性能基线](windows-performance-baseline.md)。
+
+### 按需绘制验证
+
+第 4 步新增固定只读 `editor:window-visible` 布尔事件，preload 缓存／回放并提供可取消订阅，主进程根据最小化／隐藏／恢复／显示发送；渲染端不获得窗口控制权。页面可见性与原生状态共同控制调度。
+
+第 4 步后，空场景正常待机停止提交，统计显示“静止 · 按需刷新”；可见水面与近景草继续动画。`npm run test:demand-render` 验证源码交互／异步资源；`npm run test:demand-render-desktop` 验证原 dist 的三轮 15 秒零提交、操作唤醒、隐藏动画层以及真实窗口最小化／恢复。
+
+`test:windows-performance` 的 `sample` 显式强制连续绘制（静止与运动均如此），结果新增 `scheduling=forced-continuous-diagnostic` 标记，结束后恢复按需调度；其静止项测的是连续渲染能力，不能冒充产品待机状态。待机降耗报告使用不调用 `sample` 的真实帧提交计数，分别记录，见[按需绘制验收](windows-demand-rendering.md)。
+
+### 连续编辑性能
+
+第 5 步使用 `npm run test:windows-editing` 在原 dist 中测试实际输入、长任务、撤销／重做及原生保存重开；同源码剖析和算法一致性分别记录。Worker 为 Vite 独立模块资源，通过现有受限协议及 CSP 加载，正常启动不暴露额外编辑／文件诊断权限。方法、子集参数和限制见[连续编辑验收](windows-editing-performance.md)。
+
+### 原生工程与桌面功能
+
 ```sh
 npx vitest run tests/native-project-storage.test.ts tests/project-storage.test.ts
 npm run test:desktop

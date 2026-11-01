@@ -29,8 +29,11 @@ async function configure(page, scene, view) {
   await page.evaluate(
     ({ scene, view }) => {
       const { viewport: v, session: s } = window.modelFixture;
-      v.clock.getDelta = () => 0;
-      v.clock.elapsedTime = 7;
+      Object.defineProperty(v, 'animationTime', {
+        configurable: true,
+        get: () => 7,
+        set: () => {},
+      });
       if (scene === 'surface') {
         Object.assign(s.view, {
           trees: false,
@@ -53,6 +56,7 @@ async function configure(page, scene, view) {
       v.camera.position.set(...positions[view]);
       v.camera.lookAt(v.navigation.rig.target);
       v.camera.updateMatrixWorld(true);
+      v.requestRender();
     },
     { scene, view },
   );
@@ -155,6 +159,8 @@ async function measure(page, duration, motion = false) {
         }
         cpu.push(performance.now() - started);
       };
+      v.diagnosticFrame = { begin() {}, end() {} };
+      v.requestRender();
       const start = performance.now(),
         x = v.camera.position.x;
       try {
@@ -172,6 +178,8 @@ async function measure(page, duration, motion = false) {
           requestAnimationFrame(tick);
         });
       } finally {
+        v.diagnosticFrame = undefined;
+        v.requestRender();
         v.renderer.render = render;
         for (const q of pending) g.deleteQuery(q);
         v.camera.position.x = x;

@@ -8,7 +8,7 @@
 - 浏览器编辑器支持地形、地表、模型、树草、河流、据点、辖区、势力、撤销和工程保存；运行方法、实际验证及剩余差距见[实施记录](implementation.md)。
 - 当前源码已提供 v4 自包含备份、`.map3dproj` 目录工程、Electron 首页、自定义模型和地表材质，以及 Windows 便携版构建；不兼容旧包，见[地图工程规范](map-project-format.md)和[实施记录](implementation.md)。
 - 运行导出采用引擎数据协议 v2，游戏负责读取与呈现；真实 Cocos Creator 导入、材质和运行性能尚未验收。详见[导出协议](engine-export-spec.md)与[Cocos 适配](cocos-export.md)。
-- 完整地图性能和成品美术质量尚未验收；测试数据与限制见[实施记录](implementation.md)和[渲染优化](render-optimization.md)。
+- 本机 Windows 固定示例性能见[发布验收](windows-release-performance.md)；约两万棵树的目标场景、其他设备及成品美术质量尚未验收，历史测试与限制保留在[实施记录](implementation.md)和[渲染优化](render-optimization.md)。
 
 ## 按主题查阅
 
@@ -18,6 +18,12 @@
 | 开发约束 | [架构规则](../rules/architecture.md)、[代码规范](../rules/code-style.md)、[整体风格](../rules/visual-style.md)、[Git 提交规则](../rules/git-workflow.md)：长期适用的约束。 |
 | 功能目标 | [需求与验收](requirements.md)：已确认需求、参数与验收场景，待实现目标明确标注。 |
 | 新版本计划 | [分步实施计划](new-version-plan.md)：七个固定步骤及依赖、交付物和验收条件；实际完成范围见实施记录。 |
+| Windows 性能 | [性能分步计划](windows-performance-plan.md)规定六步交付与验收；[发布版性能基线](windows-performance-baseline.md)记录第 1 步诊断方法和本机实测，与历史渲染报告分别保留。 |
+| 显示档位 | [Windows 显示档位与验收](windows-display-quality.md)：第 2 步的流畅／均衡／高画质、本机偏好、切档状态保持及验证。 |
+| 流畅地表 | [简化地表与验收](windows-simple-surface.md)：第 3 步的四层 XZ 地表、共享宏观纹理、原画质对照及 GPU 性能结果。 |
+| 按需绘制 | [待机降耗与验收](windows-demand-rendering.md)：第 4 步的事件刷新、可见动画、静止统计及待机／操作性能分别验证。 |
+| 连续编辑 | [Windows 连续编辑优化与验收](windows-editing-performance.md)：第 5 步的剖析、局部最终高度、草工作线程、历史／材质复用和数据一致性。 |
+| Windows 发布验收 | [性能集成与便携版发布](windows-release-performance.md)：第 6 步的默认显卡、两种采样／三档矩阵、功能回归、发布清单及剩余限制。 |
 | 桌面开发 | [Windows 桌面开发](desktop-development.md)：Electron 启动、原生工程操作、进程边界和便携版构建验证。 |
 | 实现设计 | [技术设计](technical-design.md)：模块、数据、算法及资源生命周期。 |
 | 操作设计 | [界面与操作](interaction.md)：布局、流程、输入与反馈。 |

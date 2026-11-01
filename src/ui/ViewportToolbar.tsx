@@ -14,6 +14,8 @@ import type { LucideIcon } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import type { ViewSettings } from '../core/types';
 import type { CameraNavigation } from '../renderer/camera-navigation';
+import { DISPLAY_QUALITIES, isDisplayQuality } from '../renderer/display-quality';
+import type { DisplayQuality } from '../renderer/display-quality';
 const LAYERS: { key: keyof ViewSettings; label: string; icon: LucideIcon; shortcut?: string }[] = [
   { key: 'hex', label: '六边形格线', icon: Hexagon, shortcut: 'G' },
   { key: 'trees', label: '树木', icon: Trees },
@@ -26,9 +28,13 @@ const LAYERS: { key: keyof ViewSettings; label: string; icon: LucideIcon; shortc
 export function ViewportToolbar({
   session,
   navigation,
+  displayQuality,
+  onDisplayQuality,
 }: {
   session: EditorSession;
   navigation: CameraNavigation;
+  displayQuality: DisplayQuality;
+  onDisplayQuality: (quality: DisplayQuality) => void;
 }) {
   const state = useSyncExternalStore(navigation.subscribe, navigation.getSnapshot);
   return (
@@ -75,6 +81,24 @@ export function ViewportToolbar({
       >
         <Keyboard size={17} />
       </button>
+      <label className="display-quality" title="仅影响本机三维显示，不修改地图内容">
+        <span>画质</span>
+        <select
+          aria-label="显示档位"
+          value={displayQuality}
+          disabled={session.busy}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (isDisplayQuality(value)) onDisplayQuality(value);
+          }}
+        >
+          {Object.entries(DISPLAY_QUALITIES).map(([value, item]) => (
+            <option key={value} value={value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

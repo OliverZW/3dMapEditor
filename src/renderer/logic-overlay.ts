@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { LogicMaterials } from './logic-materials';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -16,6 +17,7 @@ export function buildLogicOverlay(
   view: ViewSettings,
   selectedId: number | null,
   part: 'all' | 'grid' | 'ranges' = 'all',
+  materials?: LogicMaterials,
 ) {
   const group = new THREE.Group();
   const showGrid = view.hex && part !== 'ranges';
@@ -95,16 +97,18 @@ export function buildLogicOverlay(
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     const mesh = new THREE.Mesh(
       geometry,
-      new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.21,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-      }),
+      materials?.fill ??
+        new THREE.MeshBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.21,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+        }),
     );
+    mesh.userData.sharedMaterial = !!materials;
     mesh.renderOrder = 2;
     group.add(mesh);
   }
@@ -112,15 +116,18 @@ export function buildLogicOverlay(
     if (!positions.length) return;
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(positions);
-    const material = new LineMaterial({
-      color,
-      linewidth: width,
-      worldUnits: false,
-      transparent: true,
-      opacity,
-      depthWrite: false,
-    });
+    const material =
+      (color === GRID_COLOR ? materials?.grid : materials?.boundary) ??
+      new LineMaterial({
+        color,
+        linewidth: width,
+        worldUnits: false,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+      });
     const mesh = new LineSegments2(geometry, material);
+    mesh.userData.sharedMaterial = !!materials;
     mesh.renderOrder = 3;
     group.add(mesh);
   }

@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopBridge, DesktopProjectHandle } from '../src/platform/desktop-contract';
 
+let windowVisible = true;
+const visibilityCallbacks = new Set<(visible: boolean) => void>();
+ipcRenderer.on('editor:window-visible', (_event, value: unknown) => {
+  if (typeof value !== 'boolean') return;
+  windowVisible = value;
+  visibilityCallbacks.forEach((callback) => callback(value));
+});
 let closeCallback: ((id: string) => void) | undefined;
 let pendingClose: string | undefined;
 let projectCallback: ((handle: DesktopProjectHandle) => void) | undefined;
@@ -25,6 +32,14 @@ ipcRenderer.on('editor:close-request', (_event, id: unknown) => {
   else pendingClose = id;
 });
 const bridge: DesktopBridge = {
+  performanceProbeEnabled: process.argv.includes('--map-editor-performance-probe'),
+  onWindowVisibility: (callback) => {
+    visibilityCallbacks.add(callback);
+    callback(windowVisible);
+    return () => {
+      visibilityCallbacks.delete(callback);
+    };
+  },
   selectParent: () => ipcRenderer.invoke('project:select-parent'),
   createProject: (token, name) => ipcRenderer.invoke('project:create', token, name),
   recentList: () => ipcRenderer.invoke('recent:list'),

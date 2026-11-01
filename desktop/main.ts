@@ -1,3 +1,4 @@
+import { configureWindowsGpu } from './windows-gpu';
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +9,7 @@ import type { RecentProject } from '../src/platform/desktop-contract';
 import { NativeProjectStorage } from './native-project-storage';
 import { CloseController } from './close-controller';
 
+configureWindowsGpu(process.platform, app.commandLine);
 protocol.registerSchemesAsPrivileged([
   { scheme: 'shanhe', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
@@ -348,6 +350,10 @@ if (ownsInstance)
         show: false,
         title: '山河地图编辑器',
         webPreferences: {
+          additionalArguments:
+            process.env.MAP_EDITOR_PERFORMANCE_PROBE === '1'
+              ? ['--map-editor-performance-probe']
+              : [],
           preload: path.join(__dirname, 'preload.js'),
           nodeIntegration: false,
           contextIsolation: true,
@@ -356,6 +362,18 @@ if (ownsInstance)
           webviewTag: false,
         },
       });
+      const publishWindowVisibility = () => {
+        if (!window.isDestroyed())
+          window.webContents.send(
+            'editor:window-visible',
+            window.isVisible() && !window.isMinimized(),
+          );
+      };
+      window.on('show', publishWindowVisibility);
+      window.on('hide', publishWindowVisibility);
+      window.on('minimize', publishWindowVisibility);
+      window.on('restore', publishWindowVisibility);
+      window.webContents.on('did-finish-load', publishWindowVisibility);
       window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
       window.webContents.on('will-navigate', (event, url) => {
         // Vite 首次依赖预热可能重载；编辑器就绪后不允许导航绕过关闭保护。

@@ -1,5 +1,6 @@
 import type { MapDocument } from './types';
 import { cloneSurfaceMaterial } from './surface-material';
+export type HistoryArray = 'heights' | 'surface' | 'owners' | 'grass';
 type Values = Float32Array | Uint8Array | Uint32Array;
 interface Patch {
   key: 'heights' | 'surface' | 'owners' | `grass:${number}`;
@@ -83,6 +84,11 @@ export class History {
   private undoEntries: Entry[] = [];
   private redoEntries: Entry[] = [];
   private bytes = 0;
+  private changedArrays = new Set<HistoryArray>();
+  /** 本次 commit 已完成的精确差异，应用层无需再扫描大数组。 */
+  get arrayChanges(): ReadonlySet<HistoryArray> {
+    return this.changedArrays;
+  }
   get canUndo() {
     return this.undoEntries.length > 0;
   }
@@ -96,11 +102,18 @@ export class History {
     return this.redoEntries.at(-1)?.label;
   }
   clear() {
+    this.changedArrays.clear();
     this.undoEntries = [];
     this.redoEntries = [];
     this.bytes = 0;
   }
-  commit(before: MapDocument, after: MapDocument, label: string): boolean {
+  commit(
+    before: MapDocument,
+    after: MapDocument,
+    label: string,
+    arrays?: readonly HistoryArray[],
+  ): boolean {
+    this.changedArrays = new Set();
     if (
       JSON.stringify(before.settings) !== JSON.stringify(after.settings) ||
       JSON.stringify(before.grid) !== JSON.stringify(after.grid) ||
@@ -116,6 +129,7 @@ export class History {
         after: snapshot(after),
         bytes,
       });
+      this.changedArrays = new Set(['heights', 'surface', 'owners', 'grass']);
       return true;
     }
     const patches: Patch[] = [];
@@ -123,21 +137,38 @@ export class History {
       const indices: number[] = [],
         old: number[] = [],
         next: number[] = [];
-      for (let i = 0; i < a.length; i++)
+      const record = (i: number) => {
         if (a[i] !== b[i]) {
           indices.push(i);
           old.push(a[i]);
           next.push(b[i]);
         }
+      };
+      // 权重四通道按字比较；仅有变化的字再逐字节生成原有补丁，不改变补丁顺序。
+      if (
+        a instanceof Uint8Array &&
+        b instanceof Uint8Array &&
+        a.length === b.length &&
+        a.byteOffset % 4 === 0 &&
+        b.byteOffset % 4 === 0 &&
+        a.length % 4 === 0
+      ) {
+        const wordsA = new Uint32Array(a.buffer, a.byteOffset, a.length / 4);
+        const wordsB = new Uint32Array(b.buffer, b.byteOffset, b.length / 4);
+        for (let word = 0; word < wordsA.length; word++)
+          if (wordsA[word] !== wordsB[word])
+            for (let channel = 0; channel < 4; channel++) record(word * 4 + channel);
+      } else for (let i = 0; i < a.length; i++) record(i);
       if (indices.length)
         patches.push({ key, indices: new Uint32Array(indices), before: old, after: next });
     };
-    diff('heights', before.heights, after.heights);
-    diff('surface', before.surface, after.surface);
-    diff('owners', before.owners, after.owners);
+    if (!arrays || arrays.includes('heights')) diff('heights', before.heights, after.heights);
+    if (!arrays || arrays.includes('surface')) diff('surface', before.surface, after.surface);
+    if (!arrays || arrays.includes('owners')) diff('owners', before.owners, after.owners);
     for (const layer of before.grass) {
       const next = after.grass.find((g) => g.id === layer.id);
-      if (next) diff(`grass:${layer.id}`, layer.density, next.density);
+      if (next && (!arrays || arrays.includes('grass')))
+        diff(`grass:${layer.id}`, layer.density, next.density);
     }
     const grassMeta = (doc: MapDocument) =>
       doc.grass.map((g) => ({ ...g, density: new Float32Array(0) }));
@@ -173,6 +204,9 @@ export class History {
       entry.beforeGrass.reduce((n, g) => n + g.density.byteLength, 0) +
       entry.afterGrass.reduce((n, g) => n + g.density.byteLength, 0);
     this.push(entry);
+    this.changedArrays = new Set(
+      patches.map((p) => (p.key.startsWith('grass:') ? 'grass' : (p.key as HistoryArray))),
+    );
     return true;
   }
   private push(entry: Entry) {

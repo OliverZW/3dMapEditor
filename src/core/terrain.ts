@@ -1,7 +1,7 @@
 import type { BrushSettings, MapDocument, Point, River } from './types';
 export const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 export function sampleHeight(
-  doc: MapDocument,
+  doc: Pick<MapDocument, 'settings'>,
   heights: Float32Array,
   x: number,
   z: number,
@@ -19,7 +19,12 @@ export function sampleHeight(
     ? heights[i] * (1 - u - v) + heights[i + 1] * u + heights[i + n] * v
     : heights[i + n + 1] * (u + v - 1) + heights[i + n] * (1 - u) + heights[i + 1] * (1 - v);
 }
-export function sampleSlope(doc: MapDocument, heights: Float32Array, x: number, z: number): number {
+export function sampleSlope(
+  doc: Pick<MapDocument, 'settings'>,
+  heights: Float32Array,
+  x: number,
+  z: number,
+): number {
   const dx = doc.settings.width / (doc.settings.samples - 1),
     dz = doc.settings.depth / (doc.settings.samples - 1);
   return (
@@ -198,8 +203,45 @@ export function validateRiver(doc: MapDocument, river: River): string | null {
         return '河流中心线自交，请调整控制点';
   return null;
 }
-export function deriveHeights(doc: MapDocument): Float32Array {
-  const heights = doc.heights.slice();
+export interface HeightBounds {
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
+}
+/** 局部更新仅用于基础高度变化；河流/尺寸变化仍完整派生。 */
+export function deriveHeights(
+  doc: MapDocument,
+  target?: Float32Array,
+  bounds?: HeightBounds,
+): Float32Array {
+  if (
+    bounds &&
+    (!target ||
+      !Object.values(bounds).every(Number.isFinite) ||
+      bounds.minX > bounds.maxX ||
+      bounds.minZ > bounds.maxZ)
+  )
+    throw new Error('局部高度范围或缓冲无效');
+  const heights = target ?? doc.heights.slice();
+  const { samples: n, width, depth } = doc.settings;
+  if (heights === doc.heights || heights.length !== doc.heights.length)
+    throw new Error('最终高度缓冲必须独立且与工程采样一致');
+  const sample = (v: number, size: number, ceil: boolean) =>
+    clamp((ceil ? Math.ceil : Math.floor)((v / size + 0.5) * (n - 1)), 0, n - 1);
+  const x0 = bounds ? sample(bounds.minX, width, false) : 0;
+  const x1 = bounds ? sample(bounds.maxX, width, true) : n - 1;
+  const z0 = bounds ? sample(bounds.minZ, depth, false) : 0;
+  const z1 = bounds ? sample(bounds.maxZ, depth, true) : n - 1;
+  if (target)
+    for (let row = z0; row <= z1; row++)
+      heights.set(doc.heights.subarray(row * n + x0, row * n + x1 + 1), row * n + x0);
+  const area = {
+    minX: (x0 / (n - 1) - 0.5) * width,
+    maxX: (x1 / (n - 1) - 0.5) * width,
+    minZ: (z0 / (n - 1) - 0.5) * depth,
+    maxZ: (z1 / (n - 1) - 0.5) * depth,
+  };
   for (const river of doc.rivers) {
     const curve = riverCurve(river);
     const reach = river.width * 0.85;
@@ -207,8 +249,21 @@ export function deriveHeights(doc: MapDocument): Float32Array {
     const stamps = curve.flatMap((point, index) =>
       index ? interpolateStroke(curve[index - 1], point, Math.max(1, reach * 0.5)) : [point],
     );
-    for (const p of stamps)
+    for (const p of stamps) {
+      if (
+        bounds &&
+        (p.x + reach < area.minX ||
+          p.x - reach > area.maxX ||
+          p.z + reach < area.minZ ||
+          p.z - reach > area.maxZ)
+      )
+        continue;
       forBrush(doc, p, reach, (i) => {
+        if (
+          bounds &&
+          (i % n < x0 || i % n > x1 || Math.floor(i / n) < z0 || Math.floor(i / n) > z1)
+        )
+          return;
         if (visited.has(i)) return;
         visited.add(i);
         const col = i % doc.settings.samples,
@@ -225,6 +280,7 @@ export function deriveHeights(doc: MapDocument): Float32Array {
           doc.heights[i] * blend;
         heights[i] = Math.min(heights[i], target);
       });
+    }
   }
   return heights;
 }

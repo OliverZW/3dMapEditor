@@ -31,6 +31,8 @@ import type { LucideIcon } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
 import { DesktopProjectSession } from '../application/desktop-project-session';
 import { EditorViewport } from '../renderer/editor-viewport';
+import type { DisplayQuality } from '../renderer/display-quality';
+import { readDisplayPreference, writeDisplayPreference } from '../platform/display-preference';
 import { importGlb } from '../renderer/models';
 import type { AssetKind, ModelAsset, Tool } from '../core/types';
 import { getFactionCells, hexIndex, worldHex } from '../core/hex';
@@ -197,6 +199,37 @@ export function App({
   const inspectorElement = useRef<HTMLElement>(null);
   const viewportElement = useRef<HTMLDivElement>(null),
     viewport = useRef<EditorViewport | null>(null);
+  const [displayPreference] = useState(() => readDisplayPreference());
+  const [displayQuality, setDisplayQuality] = useState(displayPreference.quality);
+  const displayQualityRef = useRef(displayQuality);
+  const recreateViewport = useRef<((antialias?: boolean) => EditorViewport) | null>(null);
+  function changeDisplayQuality(next: DisplayQuality) {
+    if (next === displayQuality || !recreateViewport.current) return;
+    if (session.busy || viewport.current?.interactionActive) {
+      session.message('请先完成当前操作，再切换显示档位。', true);
+      return;
+    }
+    const previous = displayQualityRef.current;
+    try {
+      displayQualityRef.current = next;
+      recreateViewport.current();
+      setDisplayQuality(next);
+    } catch (error) {
+      displayQualityRef.current = previous;
+      try {
+        recreateViewport.current();
+      } catch (restoreError) {
+        setFatal(`显示档位切换后无法恢复视口：${String(restoreError)}`);
+      }
+      report(error);
+      return;
+    }
+    try {
+      writeDisplayPreference(next);
+    } catch (error) {
+      session.message(`显示档位已切换，但无法保存本机偏好：${String(error)}`, true);
+    }
+  }
   const [modal, setModal] = useState<
       'resources' | 'details' | 'surface' | 'export' | 'new' | 'help' | null
     >(null),
@@ -204,6 +237,7 @@ export function App({
     [search, setSearch] = useState(''),
     [resourceId, setResourceId] = useState('tree-pine');
   const [stats, setStats] = useState({
+      idle: false,
       fps: 0,
       calls: 0,
       triangles: 0,
@@ -526,11 +560,43 @@ export function App({
     return null;
   }
   useEffect(() => {
-    try {
-      const view = new EditorViewport(viewportElement.current!, session);
+    let alive = true;
+    let hostVisible = true;
+    const releaseVisibility = window.mapEditorDesktop?.onWindowVisibility?.((visible) => {
+      hostVisible = visible;
+      viewport.current?.setHostVisible(visible);
+    });
+    let releaseProbe: (() => void) | undefined;
+    let lastViewPose: ReturnType<CameraNavigation['captureView']> | undefined;
+    const createView = (antialias?: boolean, previousSurface = false) => {
+      lastViewPose = viewport.current?.navigation.captureView() ?? lastViewPose;
+      viewport.current?.dispose();
+      viewport.current = null;
+      const view = new EditorViewport(viewportElement.current!, session, {
+        diagnosticAntialias: antialias,
+        diagnosticPreviousSurface: previousSurface,
+        displayQuality: displayQualityRef.current,
+      });
+      if (lastViewPose) view.navigation.restoreView(lastViewPose);
+      view.setHostVisible(hostVisible);
       view.onStats = setStats;
       viewport.current = view;
       setNavigation(view.navigation);
+      return view;
+    };
+    recreateViewport.current = createView;
+    try {
+      createView();
+      if (displayPreference.warning) session.message(displayPreference.warning, true);
+      if (window.mapEditorDesktop?.performanceProbeEnabled)
+        void import('../renderer/performance-probe')
+          .then(({ installPerformanceProbe }) => {
+            if (alive)
+              releaseProbe = installPerformanceProbe(session, createView, () => viewport.current!);
+          })
+          .catch((error) => {
+            if (alive) setFatal(String(error));
+          });
     } catch (e) {
       setFatal(e instanceof Error ? e.message : String(e));
     }
@@ -539,6 +605,10 @@ export function App({
         .then(setDraft)
         .catch((e) => setDraftStatus(`草稿不可用：${String(e)}`));
     return () => {
+      alive = false;
+      recreateViewport.current = null;
+      releaseProbe?.();
+      releaseVisibility?.();
       viewport.current?.dispose();
       viewport.current = null;
     };
@@ -959,7 +1029,12 @@ export function App({
           {navigation && (
             <>
               <div className="viewport-toolbar">
-                <ViewportToolbar session={session} navigation={navigation} />
+                <ViewportToolbar
+                  session={session}
+                  navigation={navigation}
+                  displayQuality={displayQuality}
+                  onDisplayQuality={changeDisplayQuality}
+                />
               </div>
               <OrientationGizmo navigation={navigation} />
             </>
@@ -968,7 +1043,13 @@ export function App({
             {navigation && (
               <span className="performance" aria-label="渲染统计">
                 <span>
-                  <b>{stats.fps}</b> FPS
+                  {stats.idle ? (
+                    '静止 · 按需刷新'
+                  ) : (
+                    <>
+                      <b>{stats.fps || '—'}</b> FPS
+                    </>
+                  )}
                 </span>
                 <i aria-hidden="true" />
                 <span>

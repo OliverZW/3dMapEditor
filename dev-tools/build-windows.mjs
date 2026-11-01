@@ -72,6 +72,7 @@ async function main() {
   await access(join(packaged, 'ShanheMapEditor.exe'));
   const portable = join(stage, 'portable');
   await cp(packaged, portable, { recursive: true });
+  await writeFile(join(portable, '发布说明.txt'), notes, 'utf8');
   await writeFile(
     join(portable, 'resources/build-inventory.json'),
     JSON.stringify(await inventory(portable), null, 2) + '\n',

@@ -66,10 +66,15 @@ export function validateDocument(doc: MapDocument): void {
     doc.owners.length !== g.columns * g.rows
   )
     throw new Error('地图数据长度不一致');
-  if (!doc.heights.every((h) => Number.isFinite(h) && h >= s.minHeight && h <= s.maxHeight))
-    throw new Error('高度数据超出范围');
-  for (let i = 0; i < count; i++)
-    if (doc.surface.subarray(i * 4, i * 4 + 4).reduce((a, b) => a + b, 0) !== 255)
+  const heights = doc.heights,
+    surface = doc.surface;
+  for (let i = 0; i < heights.length; i++) {
+    const height = heights[i];
+    if (!Number.isFinite(height) || height < s.minHeight || height > s.maxHeight)
+      throw new Error('高度数据超出范围');
+  }
+  for (let i = 0; i < surface.length; i += 4)
+    if (surface[i] + surface[i + 1] + surface[i + 2] + surface[i + 3] !== 255)
       throw new Error('地表权重未归一化');
   const ids = new Set<number>();
   const register = (id: number) => {

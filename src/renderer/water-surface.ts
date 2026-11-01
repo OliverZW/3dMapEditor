@@ -11,9 +11,14 @@ export class WaterSurface {
   private waterMaterial: WaterMaterial;
   private materialKey = '';
 
-  constructor(private onError: (message: string) => void) {
+  constructor(
+    private onError: (message: string) => void,
+    private anisotropy = 4,
+    private changed: () => void = () => {},
+    private rendered: () => void = () => {},
+  ) {
     this.group.name = 'RiverWaterSurfaces';
-    this.waterMaterial = new WaterMaterial(onError);
+    this.waterMaterial = new WaterMaterial(onError, undefined, anisotropy, changed);
   }
 
   rebuild(doc: MapDocument, heights: Float32Array) {
@@ -23,7 +28,12 @@ export class WaterSurface {
     );
     if (key !== this.materialKey) {
       this.waterMaterial.dispose();
-      this.waterMaterial = new WaterMaterial(this.onError, doc.waterMaterial);
+      this.waterMaterial = new WaterMaterial(
+        this.onError,
+        doc.waterMaterial,
+        this.anisotropy,
+        this.changed,
+      );
       this.materialKey = key;
     }
     const widths = new Map(doc.rivers.map((river) => [river.id, river.width]));
@@ -62,6 +72,7 @@ export class WaterSurface {
       );
       geometry.computeVertexNormals();
       const object = new THREE.Mesh(geometry, this.waterMaterial.material);
+      object.onBeforeRender = this.rendered;
       object.name = `RiverWater:${mesh.riverId}`;
       this.group.add(object);
     }
