@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { version } from '../../package.json';
 import type { ReactNode } from 'react';
 import {
   ArrowDownToLine,
@@ -26,6 +27,7 @@ import {
   Info,
   Settings,
   Map,
+  Image,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditorSession } from '../application/editor-session';
@@ -700,6 +702,36 @@ export function App({
     );
   }
   const centerHex = session.hover ? worldHex(doc.grid, session.hover) : null;
+  const resourceNavigation = (importAction: ReactNode) => (
+    <nav className="resource-nav" aria-label="资源分类">
+      {(Object.keys(KIND_LABEL) as AssetKind[]).map((kind) => (
+        <Button
+          key={kind}
+          active={resourceTab === 'models' && category === kind}
+          icon={KIND_ICON[kind]}
+          disabled={session.busy}
+          onClick={() => {
+            setResourceTab('models');
+            setTextureTarget(null);
+            setCategory(kind);
+            setResourceId(doc.assets.find((a) => a.kind === kind)?.id ?? '');
+          }}
+        >
+          {KIND_LABEL[kind]}
+          <small>{doc.assets.filter((a) => a.kind === kind).length}</small>
+        </Button>
+      ))}
+      <Button
+        active={resourceTab === 'textures'}
+        icon={Image}
+        disabled={session.busy}
+        onClick={() => setResourceTab('textures')}
+      >
+        贴图
+      </Button>
+      {importAction}
+    </nav>
+  );
   return (
     <div className="editor-shell">
       <header className="app-header">
@@ -713,6 +745,7 @@ export function App({
             </strong>
             <small>三维战略地图编辑器</small>
           </div>
+          <span className="version-tag brand-version">v{version}</span>
         </div>
         <div className="document-name">
           <span className={session.dirty ? 'dirty-dot' : 'clean-dot'} />
@@ -720,7 +753,6 @@ export function App({
           <small>{desktop ? '.map3dproj' : '.map3d'}</small>
         </div>
         <div className="header-right">
-          <span className="version-tag">本地工程 · 0.2</span>
           <Button icon={Settings} disabled={session.busy} onClick={() => setModal('settings')}>
             设置
           </Button>
@@ -1416,48 +1448,16 @@ export function App({
           subtitle="管理当前工程的模型与贴图资源。"
           onClose={() => setModal(null)}
         >
-          <div className="resource-tabs" role="tablist" aria-label="资源类型">
-            <button
-              role="tab"
-              aria-selected={resourceTab === 'models'}
-              onClick={() => {
-                setResourceTab('models');
-                setTextureTarget(null);
-              }}
-            >
-              模型
-            </button>
-            <button
-              role="tab"
-              aria-selected={resourceTab === 'textures'}
-              onClick={() => setResourceTab('textures')}
-            >
-              贴图
-            </button>
-          </div>
           {resourceTab === 'textures' ? (
             <TextureLibrary
               session={session}
               target={textureTarget}
+              navigation={resourceNavigation}
               onClose={() => setModal(null)}
             />
           ) : (
             <div className="resource-layout">
-              <nav className="resource-nav">
-                {(Object.keys(KIND_LABEL) as AssetKind[]).map((kind) => (
-                  <Button
-                    key={kind}
-                    active={category === kind}
-                    icon={KIND_ICON[kind]}
-                    onClick={() => {
-                      setCategory(kind);
-                      setResourceId(doc.assets.find((a) => a.kind === kind)?.id ?? '');
-                    }}
-                  >
-                    {KIND_LABEL[kind]}
-                    <small>{doc.assets.filter((a) => a.kind === kind).length}</small>
-                  </Button>
-                ))}
+              {resourceNavigation(
                 <Button
                   icon={Plus}
                   className="full"
@@ -1465,8 +1465,8 @@ export function App({
                   disabled={session.busy}
                 >
                   导入静态 GLB
-                </Button>
-              </nav>
+                </Button>,
+              )}
               <div className="resource-center">
                 <label className="search-box">
                   <Search size={16} />

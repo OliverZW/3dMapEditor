@@ -77,7 +77,10 @@ const fs = require('node:fs/promises'),
     await page.getByRole('button', { name: '切换颜色贴图', exact: true }).click();
     let library = page.getByRole('dialog', { name: '资源库', exact: true });
     assert.equal(
-      await library.getByRole('tab', { name: '贴图', exact: true }).getAttribute('aria-selected'),
+      await library
+        .locator('.resource-nav')
+        .getByRole('button', { name: '贴图', exact: true })
+        .getAttribute('aria-pressed'),
       'true',
     );
     assert.equal(await library.getByLabel('贴图类型').inputValue(), 'color');
@@ -180,7 +183,85 @@ const fs = require('node:fs/promises'),
     assert.deepEqual(custom.weights, initial.weights);
     await page.screenshot({ path: path.join(root, 'surface-slots.png') });
     await page.getByRole('button', { name: /^资源库/ }).click();
-    await library.getByRole('tab', { name: '贴图', exact: true }).click();
+    await library
+      .locator('.resource-nav')
+      .getByRole('button', { name: '贴图', exact: true })
+      .click();
+    assert.equal(await library.getByRole('tablist').count(), 0);
+    const categories = library.locator('.resource-nav > button');
+    assert.deepEqual(await categories.locator('span').allTextContents(), [
+      '城池1',
+      '要塞1',
+      '树木5',
+      '草丛1',
+      '贴图',
+    ]);
+    const grassBox = await categories.nth(3).boundingBox();
+    const textureBox = await categories.nth(4).boundingBox();
+    assert.equal(grassBox.x, textureBox.x);
+    assert(textureBox.y > grassBox.y);
+    const typeFilter = library.getByLabel('贴图类型');
+    assert.equal(await typeFilter.inputValue(), 'all');
+    assert.deepEqual(await typeFilter.locator('option').allTextContents(), [
+      '全部',
+      '颜色贴图',
+      '法线贴图',
+    ]);
+    const cards = library.locator('.texture-library-grid button');
+    const allCount = await cards.count();
+    await typeFilter.selectOption('color');
+    const colorCount = await cards.count();
+    assert(colorCount > 0);
+    for (const text of await cards.locator('small').allTextContents())
+      assert(text.includes('颜色贴图'));
+    await typeFilter.selectOption('normal');
+    const normalCount = await cards.count();
+    assert(normalCount > 0);
+    for (const text of await cards.locator('small').allTextContents())
+      assert(text.includes('法线贴图'));
+    assert.equal(allCount, colorCount + normalCount);
+    await library.getByLabel('搜索贴图').fill('岩石');
+    for (const text of await cards.locator('strong').allTextContents())
+      assert(text.includes('岩石'));
+    assert((await cards.count()) > 0);
+    await library.getByLabel('搜索贴图').fill('不存在的贴图');
+    assert.equal(await cards.count(), 0);
+    await library.getByText('没有匹配的贴图', { exact: true }).waitFor();
+    await library.getByLabel('搜索贴图').fill('');
+    await typeFilter.selectOption('all');
+    await library.locator('.resource-nav').getByRole('button', { name: /树木/ }).click();
+    assert((await library.locator('.resource-grid .resource-card').count()) > 0);
+    await library
+      .locator('.resource-nav')
+      .getByRole('button', { name: '贴图', exact: true })
+      .click();
+    assert.equal(await library.getByLabel('贴图类型').inputValue(), 'all');
+    await library
+      .locator('.texture-library-grid button')
+      .filter({ hasText: '草地 · 颜色' })
+      .click();
+    await page.screenshot({ path: path.join(root, 'texture-categories.png') });
+    await library
+      .locator('.resource-nav')
+      .getByRole('button', { name: '导入贴图', exact: true })
+      .click();
+    const fileChooser = page.waitForEvent('filechooser');
+    await library.getByRole('button', { name: '导入法线贴图', exact: true }).click();
+    await (
+      await fileChooser
+    ).setFiles({
+      name: '同内容法线.png',
+      mimeType: 'image/png',
+      buffer: await png(1024),
+    });
+    const details = library.locator('.texture-library-detail');
+    await details.getByText('同内容法线.png', { exact: true }).waitFor();
+    await details.getByText('贴图 / 法线贴图', { exact: true }).waitFor();
+    assert.equal(
+      await library.locator('.texture-library-grid button[aria-pressed="true"]').count(),
+      1,
+    );
+    await library.getByRole('button', { name: '删除贴图', exact: true }).click();
     assert.equal(await library.getByRole('button', { name: '确认使用', exact: true }).count(), 0);
     await library
       .locator('.texture-library-grid button')
@@ -221,7 +302,7 @@ const fs = require('node:fs/promises'),
     );
     assert.deepEqual(errors, []);
     console.log(
-      '单行按钮、贴图页签、预览取消、单张替换、尺寸保护、导入、引用保护与保存重开通过：' + root,
+      '单行按钮、贴图分类、预览取消、单张替换、尺寸保护、导入、引用保护与保存重开通过：' + root,
     );
   } finally {
     await stop();
