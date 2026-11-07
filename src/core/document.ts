@@ -134,10 +134,33 @@ export function validateDocument(doc: MapDocument): void {
       throw new Error('据点引用或属性无效');
   }
   const sites = new Set(doc.sites.map((s) => s.id));
+  if (doc.treeLayers !== undefined) {
+    if (!Array.isArray(doc.treeLayers)) throw new Error('树木图层无效');
+    const layerIds = new Set<string>();
+    for (const layer of doc.treeLayers) {
+      if (
+        !layer ||
+        typeof layer.id !== 'string' ||
+        !layer.id ||
+        layerIds.has(layer.id) ||
+        typeof layer.name !== 'string' ||
+        !layer.name.trim() ||
+        layer.name.length > 128 ||
+        assets.get(layer.assetId)?.kind !== 'tree'
+      )
+        throw new Error('树木图层无效');
+      layerIds.add(layer.id);
+    }
+  }
   if (!doc.owners.every((id, i) => id === 0 || (sites.has(id) && cellOnMap(doc, indexHex(g, i)))))
     throw new Error('存在悬空据点归属');
   for (const tree of doc.trees) {
     register(tree.id);
+    if (
+      doc.treeLayers !== undefined &&
+      !doc.treeLayers.some((layer) => layer.id === tree.layerId && layer.assetId === tree.assetId)
+    )
+      throw new Error('树木图层引用无效');
     if (
       assets.get(tree.assetId)?.kind !== 'tree' ||
       !pointValid(tree.x, tree.z) ||

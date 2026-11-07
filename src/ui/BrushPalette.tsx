@@ -1,9 +1,10 @@
 import surfaceResources from '../../editor-assets/surface/manifest.json';
 import { assetUrl } from '../io/builtin-resources';
-import { Mountain, ArrowDownToLine, Waves, Layers3, Check, Info, Trash2 } from 'lucide-react';
+import { Mountain, ArrowDownToLine, Waves, Layers3, Check, Info, Trash2, Plus } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import { deleteSurfaceLayer } from '../core/surface-layers';
 import { Button } from './controls';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useEffect, useState } from 'react';
 import type { SurfaceImage } from '../core/types';
 import { surfaceImageBytes } from '../io/surface-resources';
@@ -63,12 +64,15 @@ export function BrushPalette({ session, onAdd }: { session: EditorSession; onAdd
         <>
           <div className="surface-palette-actions">
             <Button
+              className="primary"
+              icon={Plus}
               disabled={session.busy || session.doc.surfaceMaterial.layers.length >= 8}
               onClick={onAdd}
             >
               添加地表 <small>{session.doc.surfaceMaterial.layers.length}/8</small>
             </Button>
             <Button
+              className="danger"
               icon={Trash2}
               aria-label="删除当前地表"
               disabled={session.busy || session.doc.surfaceMaterial.layers.length <= 1}
@@ -81,7 +85,23 @@ export function BrushPalette({ session, onAdd }: { session: EditorSession; onAdd
             </Button>
           </div>
           {target && (
-            <div className="surface-delete-confirm" role="group" aria-label="删除地表确认">
+            <ConfirmDialog
+              title="删除地表确认"
+              confirmLabel="确认删除地表"
+              disabled={
+                session.busy ||
+                !session.doc.surfaceMaterial.layers.some(
+                  (layer) => layer.id === replacement && layer.id !== target.id,
+                )
+              }
+              onCancel={() => setDeleting(null)}
+              onConfirm={() => {
+                session.change('删除地表并合并权重', (doc) =>
+                  deleteSurfaceLayer(doc, target.id, replacement),
+                );
+                if (!session.error) setDeleting(null);
+              }}
+            >
               <p>删除“{target.name}”，将已有涂刷合并到：</p>
               <label className="text-field">
                 替代地表
@@ -101,29 +121,7 @@ export function BrushPalette({ session, onAdd }: { session: EditorSession; onAdd
                     ))}
                 </select>
               </label>
-              <div className="surface-palette-actions">
-                <Button disabled={session.busy} onClick={() => setDeleting(null)}>
-                  取消删除
-                </Button>
-                <Button
-                  className="danger"
-                  disabled={
-                    session.busy ||
-                    !session.doc.surfaceMaterial.layers.some(
-                      (layer) => layer.id === replacement && layer.id !== target.id,
-                    )
-                  }
-                  onClick={() => {
-                    session.change('删除地表并合并权重', (doc) =>
-                      deleteSurfaceLayer(doc, target.id, replacement),
-                    );
-                    if (!session.error) setDeleting(null);
-                  }}
-                >
-                  确认删除地表
-                </Button>
-              </div>
-            </div>
+            </ConfirmDialog>
           )}
           <div className="surface-grid">
             {session.doc.surfaceMaterial.layers.map((layer, index) => {

@@ -86,13 +86,18 @@ button.primary {
     inset 0 1px 0 #c5e4ff1f,
     0 2px 6px #0c142326;
 }
-button.primary:hover {
+button.primary:hover:not(:disabled) {
   background: #6299c5;
 }
 button.danger {
   color: var(--danger);
   background: #31262d;
   border-color: #5a3943;
+}
+button.danger:hover:not(:disabled) {
+  color: #ffb0b0;
+  background: #443039;
+  border-color: #925764;
 }
 button.icon-button {
   padding: 5px;
@@ -1142,7 +1147,8 @@ button svg {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  width: 280px;
+  width: 300px;
+  min-width: 0;
   flex: none;
   border-left: 1px solid #3b4e5c;
   padding: 16px 20px;
@@ -1164,6 +1170,34 @@ button svg {
 }
 .resource-detail button {
   font-size: 10px;
+}
+.tree-model-preview {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid #394e60;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.tree-model-preview > span,
+.tree-model-preview > small {
+  display: block;
+  padding: 4px 8px;
+}
+.tree-model-preview > small {
+  color: #9aafc0;
+}
+.tree-model-preview:hover,
+.tree-model-preview:focus-visible {
+  border-color: #82bced;
+}
+.tree-model-preview .model-preview {
+  width: 100%;
+  pointer-events: none;
 }
 .model-preview {
   height: 160px;
@@ -1451,6 +1485,22 @@ button svg {
   min-height: 0;
   gap: 10px;
 }
+.site-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.site-palette .search-box {
+  margin: 0;
+}
+.site-palette .list-heading {
+  margin: 4px 0;
+}
+.site-list {
+  max-height: 55vh;
+  overflow-y: auto;
+}
 .current-model {
   display: flex;
   align-items: center;
@@ -1549,9 +1599,24 @@ button svg {
 .resource-detail .model-details {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
-  padding: 0;
+  padding: 0 12px 0 0;
+}
+.model-details .overview-row > span {
+  flex: none;
+}
+.model-details .overview-row b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.model-details .model-preview canvas {
+  max-width: 100%;
+}
+.resource-import-form {
+  display: grid;
+  gap: 16px;
 }
 .model-details h3 {
   margin: 14px 0 8px;
@@ -2109,20 +2174,15 @@ button.home-shortcut:focus-visible {
 .surface-palette-actions button {
   font-size: 11px;
 }
-.surface-delete-confirm {
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
-}
-.surface-delete-confirm p {
-  margin-top: 0;
+.confirm-dialog-body {
   overflow-wrap: anywhere;
 }
-.surface-delete-confirm .surface-palette-actions {
+.confirm-dialog-body p {
+  margin: 0 0 16px;
+  line-height: 1.8;
+}
+.confirm-dialog-body p:last-child {
   margin-bottom: 0;
-  margin-top: 10px;
 }
 
 /* 地表主操作固定同排，卡片区域独立留白。 */
@@ -2183,16 +2243,6 @@ button.surface-texture-slot {
   width: 116px;
   flex: none;
   min-height: 36px;
-}
-.texture-import-actions {
-  margin-top: auto;
-}
-.texture-import-options {
-  display: grid;
-  margin-bottom: 8px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: #202c36;
 }
 .texture-library-grid {
   grid-auto-rows: max-content;

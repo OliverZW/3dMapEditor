@@ -39,9 +39,17 @@ fs.mkdirSync(artifacts, { recursive: true });
     return { bytes, files, rivers: JSON.parse(strFromU8(files['objects.json'])).rivers };
   }
   async function open(file) {
-    const pending = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: '打开', exact: true }).click();
-    await (await pending).setFiles(file);
+    // 浏览器已无“打开”入口，通过现有草稿恢复导入脚本构造的测试工程。
+    await page.evaluate(
+      async (bytes) => {
+        const { saveDraft } = await import('/src/platform/files.ts');
+        await saveDraft(Uint8Array.from(bytes));
+      },
+      Array.from(fs.readFileSync(file)),
+    );
+    await page.reload();
+    await page.getByRole('button', { name: '恢复', exact: true }).click();
+    await page.locator('.tool-rail button').filter({ hasText: '河流' }).click();
   }
   try {
     await page.goto(process.env.EDITOR_URL || 'http://127.0.0.1:5173/');
@@ -233,8 +241,23 @@ fs.mkdirSync(artifacts, { recursive: true });
       .locator('.left-panel')
       .getByRole('button', { name: '新建河流', exact: true });
     assert.equal(await actions().getByRole('button', { name: '新建河流', exact: true }).count(), 0);
+    const deleteRiver = page
+      .locator('.left-panel')
+      .getByRole('button', { name: '删除河流', exact: true });
+    assert.equal(
+      await page
+        .locator('.inspector')
+        .getByRole('button', { name: '删除河流', exact: true })
+        .count(),
+      0,
+    );
+    const createBox = await createRiver.boundingBox(),
+      deleteBox = await deleteRiver.boundingBox();
+    assert.equal(createBox.y, deleteBox.y);
+    assert(Math.abs(createBox.width - deleteBox.width) <= 1);
     await createRiver.click();
     assert(await createRiver.isDisabled());
+    assert(await deleteRiver.isDisabled());
     await nameInput().fill('自定义新河流');
     const canvas = await page.getByTestId('map-canvas').boundingBox();
     await page.mouse.click(canvas.x + canvas.width * 0.32, canvas.y + canvas.height * 0.6);
@@ -244,6 +267,7 @@ fs.mkdirSync(artifacts, { recursive: true });
     assert(await createRiver.isEnabled());
     record('真实视口点击新建河流后保留自定义名称');
     await page.getByRole('button', { name: '删除河流', exact: true }).click();
+    assert(await deleteRiver.isDisabled());
     const deleted = await save();
     assert.equal(deleted.rivers.length, 3);
     assert.deepEqual(deleted.files['terrain/base.f32'], saved.files['terrain/base.f32']);

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Castle, Shield, Crosshair, Plus, Trash2 } from 'lucide-react';
+import { Castle, Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import { getFactionCells } from '../core/hex';
-import { Button, Group } from './controls';
+import { Group } from './controls';
 
 export function FactionInspector({
   session,
@@ -13,16 +13,12 @@ export function FactionInspector({
 }) {
   const adding = session.factionMode === 'list';
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<'all' | 'city' | 'fortress'>('all');
   const doc = session.doc;
   const faction = doc.factions.find((f) => f.id === session.selectedFaction);
   if (!faction) return <p className="empty">从左侧选择或创建一个势力</p>;
   const members = doc.sites.filter((s) => s.factionId === faction.id);
   const candidates = doc.sites.filter(
-    (s) =>
-      s.factionId !== faction.id &&
-      (kind === 'all' || s.kind === kind) &&
-      s.name.includes(search.trim()),
+    (s) => s.factionId !== faction.id && s.name.includes(search.trim()),
   );
   return (
     <Group title="势力属性">
@@ -62,15 +58,15 @@ export function FactionInspector({
       <div className="list-heading">
         所属据点 <span>{members.length}</span>
       </div>
-      {!members.length && <p className="empty">尚无成员，使用顶部操作添加城池或要塞。</p>}
+      {!members.length && <p className="empty">尚无成员，使用顶部操作添加据点。</p>}
       {members.map((site) => {
-        const Icon = site.kind === 'city' ? Castle : Shield;
+        const Icon = Castle;
         return (
           <div className="faction-member" key={site.id}>
             <Icon size={16} />
             <span>
               {site.name}
-              <small>{site.kind === 'city' ? '城池' : '要塞'}</small>
+              <small>据点</small>
             </span>
             <button title={'定位 ' + site.name} onClick={() => onLocate(site.id)}>
               <Crosshair size={14} />
@@ -86,7 +82,7 @@ export function FactionInspector({
       })}
       {session.factionMode === 'assign' && (
         <p className="tip assignment-tip">
-          左键点击城池或要塞模型加入当前势力，可连续添加。按 Esc 退出。
+          左键点击据点模型加入当前势力，可连续添加。按 Esc 退出。
         </p>
       )}
       {adding && (
@@ -99,20 +95,8 @@ export function FactionInspector({
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          <label className="text-field">
-            类型
-            <select
-              aria-label="筛选据点类型"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as typeof kind)}
-            >
-              <option value="all">全部</option>
-              <option value="city">城池</option>
-              <option value="fortress">要塞</option>
-            </select>
-          </label>
           {candidates.map((site) => {
-            const Icon = site.kind === 'city' ? Castle : Shield;
+            const Icon = Castle;
             return (
               <button
                 className="object-row"
@@ -125,8 +109,7 @@ export function FactionInspector({
                 <span>
                   {site.name}
                   <small>
-                    {site.kind === 'city' ? '城池' : '要塞'} ·{' '}
-                    {doc.factions.find((f) => f.id === site.factionId)?.name ?? '未分配势力'}
+                    据点 · {doc.factions.find((f) => f.id === site.factionId)?.name ?? '未分配势力'}
                   </small>
                 </span>
                 <Plus size={14} />
@@ -136,16 +119,6 @@ export function FactionInspector({
           {!candidates.length && <p className="empty">没有符合条件的其他据点</p>}
         </section>
       )}
-      <Button
-        icon={Trash2}
-        className="danger full"
-        onClick={() => {
-          if (window.confirm('删除势力后，成员据点与辖区将保留。继续？'))
-            session.deleteFaction(faction.id);
-        }}
-      >
-        删除势力
-      </Button>
     </Group>
   );
 }

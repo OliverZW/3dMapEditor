@@ -52,13 +52,12 @@ export function ModelImportForm({
           模型分类
           <select
             aria-label="模型分类"
-            value={draft.kind}
+            value={draft.kind === 'fortress' ? 'city' : draft.kind}
             onChange={(event) => update({ kind: event.target.value as AssetKind })}
           >
             <option value="tree">树木</option>
             <option value="grass">草丛</option>
-            <option value="city">城池</option>
-            <option value="fortress">要塞</option>
+            <option value="city">据点</option>
           </select>
         </label>
         {(['scale', 'yaw', 'offset'] as const).map((key) => {

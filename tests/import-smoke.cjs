@@ -36,7 +36,11 @@ const edge = path.join(
     await page.goto(process.env.EDITOR_URL || 'http://127.0.0.1:5173/');
     await page.getByRole('button', { name: /资源库/ }).click();
     const chooser = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: '导入静态 GLB' }).click();
+    await page.getByRole('button', { name: '导入资源', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: '导入资源', exact: true })
+      .getByRole('button', { name: '选择文件' })
+      .click();
     await (await chooser).setFiles(fixture);
     await page
       .getByRole('dialog', { name: '导入模型' })

@@ -4,9 +4,12 @@ export function isBuiltinAsset(asset: ModelAsset): boolean {
 }
 export function assetReferenceLocations(doc: MapDocument, id: string, limit = 20): string[] {
   const locations: string[] = [];
+  for (const layer of doc.treeLayers ?? []) {
+    if (layer.assetId === id) locations.push(`树木图层：${layer.name}`);
+    if (locations.length >= limit) return locations;
+  }
   for (const site of doc.sites) {
-    if (site.assetId === id)
-      locations.push(`${site.kind === 'city' ? '城池' : '要塞'}：${site.name}（ID ${site.id}）`);
+    if (site.assetId === id) locations.push(`据点：${site.name}（ID ${site.id}）`);
     if (locations.length >= limit) return locations;
   }
   for (const layer of doc.grass) {
@@ -21,7 +24,7 @@ export function assetReferenceLocations(doc: MapDocument, id: string, limit = 20
 }
 export function assetReferenceCounts(doc: MapDocument): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const object of [...doc.sites, ...doc.trees, ...doc.grass])
+  for (const object of [...doc.sites, ...doc.trees, ...doc.grass, ...(doc.treeLayers ?? [])])
     counts.set(object.assetId, (counts.get(object.assetId) ?? 0) + 1);
   return counts;
 }

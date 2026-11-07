@@ -33,7 +33,9 @@ export function VegetationModes({ session }: { session: EditorSession }) {
       <p className="tip">
         {selecting
           ? '左键选中地图树木，可替换模型、删除或按 F 定位。'
-          : '按住左键拖动编辑，Shift 临时擦除当前模型。'}
+          : session.tool === 'trees'
+            ? '按住左键拖动编辑，Shift 临时擦除当前图层。'
+            : '按住左键拖动编辑，Shift 临时擦除当前图层。'}
       </p>
     </Group>
   );

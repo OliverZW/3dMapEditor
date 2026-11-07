@@ -49,7 +49,11 @@ export function encodeProjectFiles(
   validateDocument(doc);
   const files: ProjectFiles = {},
     records: ResourceRecord[] = [];
-  const used = new Set([...doc.trees, ...doc.grass, ...doc.sites].map((item) => item.assetId));
+  const used = new Set(
+    [...doc.trees, ...doc.grass, ...doc.sites, ...(doc.treeLayers ?? [])].map(
+      (item) => item.assetId,
+    ),
+  );
   const store = (value: ModelAsset | SurfaceImage, kind: ResourceRecord['kind']) => {
     const resource = resourceReference(value),
       record = { kind, hash: value.hash, resource };

@@ -405,7 +405,15 @@ describe('共享水面与派生结果', () => {
   });
   it('交汇处植被避让可随删除水域恢复，不删除原始记录', () => {
     const s = sessionWith([main, branch]);
-    const tree = { id: s.doc.nextId++, assetId: 'tree-pine', x: 0, z: 0, yaw: 0, scale: 1 };
+    const tree = {
+      id: s.doc.nextId++,
+      layerId: s.doc.treeLayers!.find((layer) => layer.assetId === 'tree-pine')!.id,
+      assetId: 'tree-pine',
+      x: 0,
+      z: 0,
+      yaw: 0,
+      scale: 1,
+    };
     s.doc.trees.push(tree);
     expect(vegetationFilter(s.doc, s.heights)(tree, 45)).toBe(false);
     s.change('删除水域', (doc) => {

@@ -33,6 +33,13 @@ import { containsPoint } from '../core/map-bounds';
 import { prepareSurfaceDocument } from '../io/surface-resources';
 import { hexWorld } from '../core/hex';
 import { hashRandom, vegetationFilter } from '../core/vegetation';
+import { addGrassLayer, replaceGrassLayerModel } from '../core/grass-layers';
+import {
+  prepareTreeLayers,
+  addTreeLayer,
+  deleteTreeLayer,
+  replaceTreeLayerModel,
+} from '../core/tree-layers';
 type FactionMode = 'inspect' | 'list' | 'assign';
 export class EditorSession {
   doc: MapDocument;
@@ -46,8 +53,65 @@ export class EditorSession {
   view: ViewSettings = { ...DEFAULT_VIEW };
   assetId = 'city-jade';
   treeMode: 'paint' | 'select' = 'paint';
+  selectedTreeLayer: string | null = null;
+  selectedGrassLayer: number | null = null;
+  get grassLayer() {
+    return (
+      this.doc.grass.find((layer) => layer.id === this.selectedGrassLayer) ?? this.doc.grass[0]
+    );
+  }
+  selectGrassLayer(id: number) {
+    this.cancelStroke();
+    this.selectedGrassLayer = id;
+    this.assetId = this.grassLayer?.assetId ?? '';
+    this.notify();
+  }
+  addGrassLayer(assetId: string) {
+    let id = 0;
+    this.change('添加草丛图层', (doc) => {
+      id = addGrassLayer(doc, assetId, this.brush).id;
+    });
+    if (!this.error) this.selectGrassLayer(id);
+  }
+  deleteGrassLayer(id: number) {
+    this.change('删除草丛图层', (doc) => {
+      if (!doc.grass.some((layer) => layer.id === id)) throw new Error('草丛图层不存在');
+      doc.grass = doc.grass.filter((layer) => layer.id !== id);
+    });
+    if (!this.error) this.selectGrassLayer(this.grassLayer?.id ?? 0);
+  }
+  replaceGrassLayerModel(id: number, assetId: string) {
+    this.change('替换草丛图层模型', (doc) => replaceGrassLayerModel(doc, id, assetId));
+    if (!this.error) this.selectGrassLayer(id);
+  }
+  get treeLayer() {
+    return (
+      this.doc.treeLayers?.find((layer) => layer.id === this.selectedTreeLayer) ??
+      this.doc.treeLayers?.[0]
+    );
+  }
+  selectTreeLayer(id: string) {
+    this.cancelStroke();
+    this.selectedTreeLayer = id;
+    this.assetId = this.treeLayer?.assetId ?? '';
+    this.notify();
+  }
+  addTreeLayer(assetId: string) {
+    let id = '';
+    this.change('添加树木图层', (doc) => {
+      id = addTreeLayer(doc, assetId).id;
+    });
+    if (!this.error) this.selectTreeLayer(id);
+  }
+  deleteTreeLayer(id: string) {
+    this.change('删除树木图层及实例', (doc) => deleteTreeLayer(doc, id));
+    if (!this.error) this.selectTreeLayer(this.treeLayer?.id ?? '');
+  }
+  replaceTreeLayerModel(id: string, assetId: string) {
+    this.change('替换树木图层模型', (doc) => replaceTreeLayerModel(doc, id, assetId));
+    if (!this.error) this.selectTreeLayer(id);
+  }
   documentVersion = 0;
-  private brushAssets = { tree: 'tree-pine', grass: 'grass-reed' };
   private eraseModes = { tree: false, grass: false };
   siteKind: 'city' | 'fortress' = 'city';
   selectedSite: number | null = null;
@@ -126,6 +190,7 @@ export class EditorSession {
   surfaceLayerPreview: { index: number; asset: SurfaceAsset } | null = null;
   constructor(initial = createDemo()) {
     this.doc = prepareWaterDocument(prepareModelDocument(prepareSurfaceDocument(initial)));
+    prepareTreeLayers(this.doc);
     this.heights = deriveHeights(this.doc);
   }
   previewSurface(values: Partial<Pick<SurfaceMaterialPack, 'scale' | 'detail' | 'slopeRock'>>) {
@@ -360,12 +425,15 @@ export class EditorSession {
       ];
     }
     validateDocument(candidate);
+    prepareTreeLayers(candidate);
     this.cancelStroke();
     this.surfaceEdit = null;
     this.surfaceLayerEdit = null;
     this.surfacePreview = null;
     this.surfaceLayerPreview = null;
     this.doc = candidate;
+    this.selectedTreeLayer = null;
+    this.selectedGrassLayer = null;
     this.resizePreview = null;
     this.terrainRevision++;
     this.documentVersion++;
@@ -533,17 +601,25 @@ export class EditorSession {
       );
   }
   brushAsset(kind: 'tree' | 'grass') {
-    return (
-      this.doc.assets.find((asset) => asset.id === this.brushAssets[kind] && asset.kind === kind) ??
-      this.doc.assets.find((asset) => asset.kind === kind)
+    if (kind === 'tree')
+      return this.doc.assets.find(
+        (asset) => asset.id === this.treeLayer?.assetId && asset.kind === 'tree',
+      );
+    return this.doc.assets.find(
+      (asset) => asset.id === this.grassLayer?.assetId && asset.kind === 'grass',
     );
   }
   selectBrushAsset(kind: 'tree' | 'grass', id: string) {
     if (!this.doc.assets.some((asset) => asset.id === id && asset.kind === kind)) return;
-    this.brushAssets[kind] = id;
-    if ((kind === 'tree' && this.tool === 'trees') || (kind === 'grass' && this.tool === 'grass'))
-      this.assetId = id;
-    this.notify();
+    if (kind === 'tree') {
+      const layer = this.doc.treeLayers?.find((item) => item.assetId === id);
+      if (layer) this.selectTreeLayer(layer.id);
+      else this.addTreeLayer(id);
+      return;
+    }
+    const layer = this.doc.grass.find((item) => item.assetId === id);
+    if (layer) this.selectGrassLayer(layer.id);
+    else this.addGrassLayer(id);
   }
   setVegetationMode(mode: 'paint' | 'erase' | 'select') {
     if (this.tool !== 'trees' && this.tool !== 'grass') return;
@@ -610,7 +686,7 @@ export class EditorSession {
     this.sitePreviewLocked = false;
     this.selectedSite = null;
     this.sitePreview = null;
-    this.message(`在地图上选择${kind === 'city' ? '城池' : '要塞'}中心，按 Enter 或确认放置`);
+    this.message('在地图上选择据点中心，按 Enter 或确认放置');
   }
   commitSite() {
     if (!this.sitePreview || !this.sitePreviewLocked) return;
@@ -630,7 +706,7 @@ export class EditorSession {
       const assetId = this.assetId,
         kind = this.siteKind;
       let id = 0;
-      this.change(`放置${kind === 'city' ? '城池' : '要塞'}`, (doc) => {
+      this.change('放置据点', (doc) => {
         const i = hexIndex(doc.grid, center);
         if (i < 0 || !containsPoint(doc.settings, hexWorld(doc.grid, center)))
           throw new Error('中心超出地图地面');
@@ -640,7 +716,7 @@ export class EditorSession {
         doc.sites.push({
           id,
           kind,
-          name: `${kind === 'city' ? '城池' : '要塞'} ${id}`,
+          name: `据点 ${id}`,
           assetId,
           center,
           yaw: 0,
@@ -853,7 +929,7 @@ export class EditorSession {
     if (this.tool === 'trees' || this.tool === 'grass') {
       const asset = this.brushAsset(this.tool === 'trees' ? 'tree' : 'grass');
       if (!asset) {
-        this.message('当前分类没有模型，请先导入模型。', true);
+        this.message('请先添加图层，并从资源库选择模型。', true);
         return;
       }
       this.assetId = asset.id;
@@ -928,7 +1004,8 @@ export class EditorSession {
     else if (this.tool === 'trees') {
       if (b.erase || shift) {
         doc.trees = doc.trees.filter(
-          (t) => t.assetId !== this.assetId || Math.hypot(t.x - point.x, t.z - point.z) > b.radius,
+          (t) =>
+            t.layerId !== this.treeLayer?.id || Math.hypot(t.x - point.x, t.z - point.z) > b.radius,
         );
       } else {
         const asset =
@@ -951,6 +1028,7 @@ export class EditorSession {
             continue;
           doc.trees.push({
             id: doc.nextId++,
+            layerId: this.treeLayer?.id,
             assetId: asset.id,
             maxSlope: b.maxSlope,
             ...p,
@@ -960,25 +1038,8 @@ export class EditorSession {
         }
       }
     } else if (this.tool === 'grass') {
-      const asset =
-        doc.assets.find((a) => a.id === this.assetId && a.kind === 'grass') ??
-        doc.assets.find((a) => a.kind === 'grass')!;
-      let layer = doc.grass.find((g) => g.assetId === asset.id);
-      if (!layer) {
-        layer = {
-          id: doc.nextId++,
-          assetId: asset.id,
-          density: new Float32Array(doc.heights.length),
-          seed: doc.nextId * 271,
-          version: 1,
-          minScale: b.minScale,
-          maxScale: b.maxScale,
-          maxSlope: b.maxSlope,
-          wind: 1,
-        };
-        doc.grass.push(layer);
-      }
-      const active = layer;
+      const active = this.grassLayer;
+      if (!active) return;
       forBrush(doc, point, b.radius, (i, d) => {
         const target = b.erase || shift ? 0 : b.grassDensity;
         active.density[i] += (target - active.density[i]) * Math.max(0.2, 1 - d / b.radius);
@@ -1044,15 +1105,21 @@ export class EditorSession {
     this.change('替换模型', (doc) => {
       const site = doc.sites.find((s) => s.id === this.selectedSite);
       if (site) {
-        if (site.kind !== asset.kind) throw new Error('据点模型类别不匹配');
+        if (asset.kind !== 'city' && asset.kind !== 'fortress') throw new Error('请选择据点模型');
+        site.kind = asset.kind;
         site.assetId = assetId;
         return;
       }
       const tree = doc.trees.find((t) => t.id === this.selectedTree);
       if (tree && asset.kind === 'tree') {
         const old = tree.assetId;
+        const layer =
+          doc.treeLayers?.find((item) => item.assetId === assetId) ?? addTreeLayer(doc, assetId);
         for (const t of doc.trees)
-          if (t.id === tree.id || (allTrees && t.assetId === old)) t.assetId = assetId;
+          if (t.id === tree.id || (allTrees && t.assetId === old)) {
+            t.assetId = assetId;
+            t.layerId = layer.id;
+          }
       }
     });
   }
@@ -1060,7 +1127,8 @@ export class EditorSession {
     return (
       this.doc.trees.filter((t) => t.assetId === id).length +
       this.doc.sites.filter((s) => s.assetId === id).length +
-      this.doc.grass.filter((g) => g.assetId === id).length
+      this.doc.grass.filter((g) => g.assetId === id).length +
+      (this.doc.treeLayers?.filter((layer) => layer.assetId === id).length ?? 0)
     );
   }
 }

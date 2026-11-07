@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
-import { Button, Group, NumberField } from './controls';
+import { Group, NumberField } from './controls';
 
 export function RiverInspector({ session }: { session: EditorSession }) {
   const river =
@@ -68,7 +67,7 @@ export function RiverInspector({ session }: { session: EditorSession }) {
         max={256}
         onChange={(v) => update('waterLevel', v)}
       />
-      {preview ? (
+      {preview && (
         <>
           <p className="tip">点击空白处添加节点；按住蓝色节点拖动。Enter 确认，Esc 取消。</p>
           {!!connected.length && (
@@ -83,20 +82,6 @@ export function RiverInspector({ session }: { session: EditorSession }) {
             </div>
           )}
         </>
-      ) : (
-        <Button
-          className="full danger"
-          icon={Trash2}
-          onClick={() => {
-            session.change('删除河流并恢复基础地形', (doc) => {
-              doc.rivers = doc.rivers.filter((r) => r.id !== river.id);
-            });
-            session.selectedRiver = null;
-            session.notify();
-          }}
-        >
-          删除河流
-        </Button>
       )}
     </Group>
   );

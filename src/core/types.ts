@@ -41,11 +41,17 @@ export interface ModelAsset {
   source: string;
 }
 export interface Tree extends Point {
+  layerId?: string;
   id: number;
   assetId: string;
   yaw: number;
   scale: number;
   maxSlope?: number;
+}
+export interface TreeLayer {
+  id: string;
+  name: string;
+  assetId: string;
 }
 export interface GrassLayer {
   id: number;
@@ -97,6 +103,7 @@ export interface MapDocument {
   owners: Uint32Array;
   assets: ModelAsset[];
   trees: Tree[];
+  treeLayers?: TreeLayer[];
   grass: GrassLayer[];
   rivers: River[];
   sites: Site[];

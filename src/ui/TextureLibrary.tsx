@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Plus, Search } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import type { SurfaceTextureKind } from '../core/types';
 import { replaceSurfaceTexture, surfaceTextures, textureLocations } from '../core/surface-textures';
-import { importSurfaceImage } from '../io/surface-import';
 import { SurfaceTexturePreview } from './SurfaceTexturePreview';
 import { Button } from './controls';
 
@@ -17,11 +16,13 @@ export function TextureLibrary({
   session,
   target,
   navigation,
+  imported,
   onClose,
 }: {
   session: EditorSession;
   target: TextureTarget | null;
-  navigation: (importAction: ReactNode) => ReactNode;
+  navigation: ReactNode;
+  imported: { key: string; kind: SurfaceTextureKind } | null;
   onClose: () => void;
 }) {
   const [filter, setFilter] = useState<SurfaceTextureKind | 'all'>(target?.kind ?? 'all');
@@ -36,18 +37,13 @@ export function TextureLibrary({
   );
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
-  const [working, setWorking] = useState(false);
-  const [choosingImport, setChoosingImport] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const importKind = useRef<SurfaceTextureKind>('color');
-  const alive = useRef(true);
+  const working = session.busy;
   useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      session.cancelSurfaceLayer();
-    };
-  }, [session]);
+    if (!imported) return;
+    setFilter(target?.kind ?? imported.kind);
+    setSearch('');
+    setSelected(imported.key);
+  }, [imported, target?.kind]);
   const visibleItems = items.filter(
     (item) => (filter === 'all' || item.kind === filter) && item.name.includes(search),
   );
@@ -75,33 +71,9 @@ export function TextureLibrary({
     session.doc.surfaceMaterial.textures?.find(
       (item) => item.kind === current.kind && item.image.hash === current.image.hash,
     );
-  const requestImport = (kind: SurfaceTextureKind) => {
-    importKind.current = kind;
-    setChoosingImport(false);
-    fileInput.current?.click();
-  };
   return (
     <div className="resource-layout">
-      {navigation(
-        <div className="texture-import-actions">
-          {choosingImport && (
-            <div className="texture-import-options" role="group" aria-label="选择导入贴图类型">
-              <Button onClick={() => requestImport('color')}>导入颜色贴图</Button>
-              <Button onClick={() => requestImport('normal')}>导入法线贴图</Button>
-            </div>
-          )}
-          <Button
-            icon={Plus}
-            className="full"
-            disabled={working}
-            onClick={() =>
-              filter === 'all' ? setChoosingImport(!choosingImport) : requestImport(filter)
-            }
-          >
-            导入贴图
-          </Button>
-        </div>,
-      )}
+      {navigation}
       <div className="resource-center texture-library">
         <div className="texture-library-tools">
           <label className="search-box">
@@ -119,7 +91,6 @@ export function TextureLibrary({
             disabled={!!target || working}
             onChange={(event) => {
               setFilter(event.target.value as SurfaceTextureKind | 'all');
-              setChoosingImport(false);
               setError('');
             }}
           >
@@ -128,56 +99,6 @@ export function TextureLibrary({
             <option value="normal">法线贴图</option>
           </select>
         </div>
-        <input
-          ref={fileInput}
-          hidden
-          aria-label="导入贴图"
-          type="file"
-          accept="image/png,image/jpeg"
-          disabled={working}
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (!file || working) return;
-            const kind = target?.kind ?? (filter === 'all' ? importKind.current : filter);
-            const version = session.documentVersion,
-              revision = session.revision;
-            setWorking(true);
-            setError('');
-            session.busy = true;
-            session.notify();
-            try {
-              const image = await importSurfaceImage(file);
-              if (!alive.current) return;
-              if (version !== session.documentVersion || revision !== session.revision)
-                throw new Error('工程已变化，请重新导入');
-              const existing = surfaceTextures(session.doc).find(
-                (item) => item.kind === kind && item.image.hash === image.hash,
-              );
-              if (!existing)
-                session.change('导入贴图', (doc) => {
-                  doc.surfaceMaterial.textures = [
-                    ...(doc.surfaceMaterial.textures ?? []),
-                    {
-                      id: `texture-${crypto.randomUUID()}`,
-                      name: file.name.slice(0, 128),
-                      kind,
-                      image,
-                    },
-                  ];
-                });
-              if (session.error) throw new Error(session.error);
-              setSearch('');
-              setSelected(`${kind}:${image.hash}`);
-            } catch (reason) {
-              if (alive.current) setError(String(reason));
-            } finally {
-              session.busy = false;
-              session.notify();
-              if (alive.current) setWorking(false);
-            }
-          }}
-        />
         <div className="resource-grid texture-library-grid">
           {visibleItems.map((item) => {
             const key = `${item.kind}:${item.image.hash}`;

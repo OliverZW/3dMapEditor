@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { version } from '../../package.json';
-import type { ReactNode } from 'react';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -23,7 +22,6 @@ import {
   Check,
   SlidersHorizontal,
   ExternalLink,
-  Shield,
   Info,
   Settings,
   Map,
@@ -36,7 +34,7 @@ import { EditorViewport } from '../renderer/editor-viewport';
 import type { RenderSettings } from '../renderer/display-quality';
 import { readDisplayPreference, writeDisplayPreference } from '../platform/display-preference';
 import { importGlb } from '../renderer/models';
-import type { AssetKind, ModelAsset, Tool } from '../core/types';
+import type { AssetKind, ModelAsset, SurfaceTextureKind, Tool } from '../core/types';
 import { getFactionCells, hexIndex, worldHex } from '../core/hex';
 import { assetReferenceCounts, isBuiltinAsset } from '../core/assets';
 import { RiverInspector } from './RiverInspector';
@@ -46,24 +44,32 @@ import type { DecodedHeight } from '../io/heightmap';
 import { download, loadDraft, saveDraft, selectFile } from '../platform/files';
 import { exportCocos, preflightCocos } from '../io/cocos-export';
 import { ModelDetails } from './ModelDetails';
+import { AssetPreview } from './AssetPreview';
 import { ModelImportForm } from './ModelImportForm';
-import { VegetationPalette } from './VegetationPalette';
+import { GrassPalette } from './GrassPalette';
+import { TreePalette } from './TreePalette';
 import { InspectorActions } from './InspectorActions';
+import { inspectorState } from './inspector-state';
 import { BrushPalette } from './BrushPalette';
 import { SurfaceInspector } from './SurfaceInspector';
 import { TextureLibrary } from './TextureLibrary';
 import type { TextureTarget } from './TextureLibrary';
 import { SurfaceLibrary } from './SurfaceLibrary';
 import { MapOverview, MapOverviewInspector } from './MapOverview';
-import { Button, Group, Slider, NumberField } from './controls';
+import { Button, Group, Slider, NumberField, HelpTip } from './controls';
 import { FactionInspector } from './FactionInspector';
 import { ViewportToolbar } from './ViewportToolbar';
 import { OrientationGizmo } from './OrientationGizmo';
 import { InputHints } from './InputHints';
 import type { CameraNavigation } from '../renderer/camera-navigation';
+import { SitePalette } from './SitePalette';
+import { Modal } from './Modal';
 import { SiteInspector } from './SiteInspector';
 import { RenderSettingsForm } from './RenderSettingsForm';
 import { OperationGuide } from './OperationGuide';
+import { ResourceImportDialog } from './ResourceImportDialog';
+import { importSurfaceImage } from '../io/surface-import';
+import { surfaceTextures } from '../core/surface-textures';
 const modelTriangleFormat = new Intl.NumberFormat('zh-CN', {
   notation: 'compact',
   maximumFractionDigits: 1,
@@ -75,99 +81,21 @@ const TOOLS: { id: Tool; label: string; icon: LucideIcon; hint: string }[] = [
   { id: 'trees', label: '树木', icon: Trees, hint: '种植与擦除树木' },
   { id: 'grass', label: '草丛', icon: Sprout, hint: '绘制立体草丛密度' },
   { id: 'river', label: '河流', icon: Waves, hint: '控制点曲线与非破坏河床' },
-  { id: 'sites', label: '据点', icon: Castle, hint: '据点与辖区：城池、要塞和范围绘制' },
+  { id: 'sites', label: '据点', icon: Castle, hint: '据点模型与辖区绘制' },
   { id: 'factions', label: '势力', icon: Flag, hint: '据点所属势力与范围' },
 ];
 const KIND_LABEL: Record<AssetKind, string> = {
-  city: '城池',
-  fortress: '要塞',
+  city: '据点',
+  fortress: '据点',
   tree: '树木',
   grass: '草丛',
 };
 const KIND_ICON: Record<AssetKind, LucideIcon> = {
   city: Castle,
-  fortress: Shield,
+  fortress: Castle,
   tree: Trees,
   grass: Sprout,
 };
-function Modal({
-  title,
-  subtitle,
-  children,
-  onClose,
-  wide = false,
-  className = '',
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  onClose: () => void;
-  wide?: boolean;
-  className?: string;
-}) {
-  const dialog = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    return () => {
-      if (previous?.isConnected) previous.focus();
-    };
-  }, []);
-  return (
-    <div
-      className="modal-scrim"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        ref={dialog}
-        tabIndex={-1}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.stopPropagation();
-            onClose();
-            return;
-          }
-          if (event.key !== 'Tab') return;
-          const items = [
-            ...dialog.current!.querySelectorAll<HTMLElement>(
-              'button,input,select,textarea,[tabindex="0"]',
-            ),
-          ].filter((node) => !node.hasAttribute('disabled') && node.getClientRects().length > 0);
-          if (!items.length) {
-            event.preventDefault();
-            return;
-          }
-          const first = items[0],
-            last = items[items.length - 1];
-          if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-          } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-          }
-        }}
-        aria-modal="true"
-        aria-label={title}
-        className={`modal ${wide ? 'wide' : ''} ${className}`}
-      >
-        <div className="modal-title">
-          <div>
-            <h2>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-          <button className="icon-button" onClick={onClose} title="关闭">
-            <X size={19} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 export function App({
   initialSession,
   initialDesktop,
@@ -192,6 +120,11 @@ export function App({
     null,
   );
   const [importFailure, setImportFailure] = useState('');
+  const [choosingResourceImport, setChoosingResourceImport] = useState(false);
+  const [importedTexture, setImportedTexture] = useState<{
+    key: string;
+    kind: SurfaceTextureKind;
+  } | null>(null);
   useEffect(() => {
     importAlive.current = true;
     return () => {
@@ -249,6 +182,30 @@ export function App({
     [resourceId, setResourceId] = useState('tree-pine');
   const [resourceTab, setResourceTab] = useState<'models' | 'textures'>('models');
   const [textureTarget, setTextureTarget] = useState<TextureTarget | null>(null);
+  const [vegetationModelTarget, setVegetationModelTarget] = useState<{
+    kind: 'tree' | 'grass';
+    layerId: string | null;
+    version: number;
+  } | null>(null);
+  const [siteModelTarget, setSiteModelTarget] = useState<{
+    id: number | null;
+    version: number;
+  } | null>(null);
+  function openSiteModels(id: number | null) {
+    setSiteModelTarget({ id, version: session.documentVersion });
+    setVegetationModelTarget(null);
+    setCategory('city');
+    setSearch('');
+    setImportedTexture(null);
+    setTextureTarget(null);
+    setResourceTab('models');
+    setResourceId(
+      doc.sites.find((site) => site.id === id)?.assetId ??
+        doc.assets.find((asset) => asset.kind === 'city' || asset.kind === 'fortress')?.id ??
+        '',
+    );
+    setModal('resources');
+  }
   const [stats, setStats] = useState({
       idle: false,
       fps: 0,
@@ -286,10 +243,7 @@ export function App({
         ? doc.trees.find((t) => t.id === session.selectedTree)
         : undefined,
     activeTool = TOOLS.find((t) => t.id === session.tool)!;
-  const activeAsset =
-    session.tool === 'trees' || session.tool === 'grass'
-      ? session.brushAsset(session.tool === 'trees' ? 'tree' : 'grass')
-      : doc.assets.find((a) => a.id === session.assetId);
+  const inspector = inspectorState(session);
   const resource = doc.assets.find((a) => a.id === resourceId);
   const referenceCounts = useMemo(() => assetReferenceCounts(doc), [doc, session.revision]);
   function updateBrush<K extends keyof typeof b>(key: K, value: (typeof b)[K]) {
@@ -491,12 +445,56 @@ export function App({
       session.notify();
     }
   }
+  async function importTexture(kind: SurfaceTextureKind) {
+    if (session.busy) return;
+    const version = session.documentVersion,
+      revision = session.revision;
+    session.busy = true;
+    session.notify();
+    try {
+      const file = await selectFile('.png,.jpg,.jpeg');
+      if (!file) return;
+      const image = await importSurfaceImage(file);
+      if (!importAlive.current) return;
+      if (version !== session.documentVersion || revision !== session.revision)
+        throw new Error('工程已变化，请重新导入');
+      const existing = surfaceTextures(session.doc).find(
+        (item) => item.kind === kind && item.image.hash === image.hash,
+      );
+      if (!existing)
+        session.change('导入贴图', (document) => {
+          document.surfaceMaterial.textures = [
+            ...(document.surfaceMaterial.textures ?? []),
+            {
+              id: `texture-${crypto.randomUUID()}`,
+              name: file.name.slice(0, 128),
+              kind,
+              image,
+            },
+          ];
+        });
+      if (session.error) throw new Error(session.error);
+      setImportedTexture({ key: `${kind}:${image.hash}`, kind });
+      setResourceTab('textures');
+    } catch (error) {
+      report(error);
+      if (importAlive.current)
+        setImportFailure(error instanceof Error ? error.message : String(error));
+    } finally {
+      session.busy = false;
+      session.notify();
+    }
+  }
   function finishImport(asset?: ModelAsset): string | null {
     if (asset && importDraft) {
       try {
         session.addAsset(asset, importDraft.version);
         setResourceId(asset.id);
         setCategory(asset.kind);
+        setResourceTab('models');
+        setTextureTarget(null);
+        setImportedTexture(null);
+        setSearch('');
       } catch (error) {
         return error instanceof Error ? error.message : String(error);
       }
@@ -677,15 +675,12 @@ export function App({
   useEffect(() => {
     const content = inspectorElement.current?.querySelector('.inspector-content');
     if (content) content.scrollTop = 0;
-  }, [
-    session.tool,
-    session.selectedSite,
-    session.selectedTree,
-    session.selectedFaction,
-    session.selectedRiver,
-  ]);
+  }, [inspector.targetKey, session.documentVersion]);
   function openResources(kind?: AssetKind) {
+    setSiteModelTarget(null);
+    setVegetationModelTarget(null);
     setResourceTab('models');
+    setImportedTexture(null);
     setTextureTarget(null);
     if (session.resizePreview) {
       session.message('请先确认或取消地面尺寸调整。', true);
@@ -702,23 +697,32 @@ export function App({
     );
   }
   const centerHex = session.hover ? worldHex(doc.grid, session.hover) : null;
-  const resourceNavigation = (importAction: ReactNode) => (
+  const resourceNavigation = (
     <nav className="resource-nav" aria-label="资源分类">
-      {(Object.keys(KIND_LABEL) as AssetKind[]).map((kind) => (
+      {(['city', 'tree', 'grass'] as AssetKind[]).map((kind) => (
         <Button
           key={kind}
-          active={resourceTab === 'models' && category === kind}
+          active={
+            resourceTab === 'models' && (category === 'fortress' ? 'city' : category) === kind
+          }
           icon={KIND_ICON[kind]}
           disabled={session.busy}
           onClick={() => {
             setResourceTab('models');
+            setImportedTexture(null);
             setTextureTarget(null);
             setCategory(kind);
             setResourceId(doc.assets.find((a) => a.kind === kind)?.id ?? '');
           }}
         >
           {KIND_LABEL[kind]}
-          <small>{doc.assets.filter((a) => a.kind === kind).length}</small>
+          <small>
+            {
+              doc.assets.filter((a) =>
+                kind === 'city' ? a.kind === 'city' || a.kind === 'fortress' : a.kind === kind,
+              ).length
+            }
+          </small>
         </Button>
       ))}
       <Button
@@ -729,7 +733,14 @@ export function App({
       >
         贴图
       </Button>
-      {importAction}
+      <Button
+        icon={Plus}
+        className="full"
+        disabled={session.busy}
+        onClick={() => setChoosingResourceImport(true)}
+      >
+        导入资源
+      </Button>
     </nav>
   );
   return (
@@ -850,28 +861,65 @@ export function App({
           {(session.tool === 'terrain' || session.tool === 'surface') && (
             <BrushPalette session={session} onAdd={() => setModal('surface-add')} />
           )}
-          {(session.tool === 'trees' || session.tool === 'grass') && (
-            <VegetationPalette
-              key={session.tool}
+          {session.tool === 'trees' && (
+            <TreePalette
+              key={session.documentVersion}
               session={session}
-              kind={session.tool === 'trees' ? 'tree' : 'grass'}
-              onImport={(kind) => importModel(kind)}
-              onDetails={(id) => {
-                setResourceId(id);
-                setModal('details');
+              onAdd={() => {
+                openResources('tree');
+                setVegetationModelTarget({
+                  kind: 'tree',
+                  layerId: null,
+                  version: session.documentVersion,
+                });
+              }}
+            />
+          )}
+          {session.tool === 'grass' && (
+            <GrassPalette
+              key={session.documentVersion}
+              session={session}
+              onAdd={() => {
+                openResources('grass');
+                setVegetationModelTarget({
+                  kind: 'grass',
+                  layerId: null,
+                  version: session.documentVersion,
+                });
               }}
             />
           )}
           {session.tool === 'river' && (
             <>
-              <Button
-                icon={Plus}
-                className="full primary"
-                disabled={!!session.riverPreview}
-                onClick={() => session.startRiver()}
-              >
-                新建河流
-              </Button>
+              <div className="surface-palette-actions">
+                <Button
+                  icon={Plus}
+                  className="primary"
+                  disabled={session.busy || !!session.riverPreview}
+                  onClick={() => session.startRiver()}
+                >
+                  新建河流
+                </Button>
+                <Button
+                  icon={Trash2}
+                  className="danger"
+                  disabled={
+                    session.busy ||
+                    !!session.riverPreview ||
+                    !doc.rivers.some((river) => river.id === session.selectedRiver)
+                  }
+                  onClick={() => {
+                    const id = session.selectedRiver;
+                    session.change('删除河流并恢复基础地形', (document) => {
+                      document.rivers = document.rivers.filter((river) => river.id !== id);
+                    });
+                    session.selectedRiver = null;
+                    session.notify();
+                  }}
+                >
+                  删除河流
+                </Button>
+              </div>
               <div className="list-heading">
                 地图河流 <span>{doc.rivers.length}</span>
               </div>
@@ -897,42 +945,7 @@ export function App({
             </>
           )}
           {session.tool === 'sites' && (
-            <>
-              <div className="two-buttons">
-                <Button icon={Castle} onClick={() => session.beginSite('city')}>
-                  新建城池
-                </Button>
-                <Button icon={Shield} onClick={() => session.beginSite('fortress')}>
-                  新建要塞
-                </Button>
-              </div>
-              <div className="list-heading">
-                地图据点 <span>{doc.sites.length}</span>
-              </div>
-              {doc.sites.map((s) => (
-                <button
-                  key={s.id}
-                  className={`object-row ${site?.id === s.id ? 'selected' : ''}`}
-                  onClick={() => session.selectSite(s.id)}
-                >
-                  <KindIcon kind={s.kind} size={19} />
-                  <span>
-                    {s.name}
-                    <small>
-                      {KIND_LABEL[s.kind]} ·{' '}
-                      {doc.factions.find((f) => f.id === s.factionId)?.name ?? '未分配势力'}
-                    </small>
-                  </span>
-                  <i
-                    style={{
-                      background:
-                        doc.factions.find((f) => f.id === s.factionId)?.color ?? '#88939a',
-                    }}
-                  />
-                </button>
-              ))}
-              {!doc.sites.length && <p className="empty">放置一座城池，开始构建山河。</p>}
-            </>
+            <SitePalette session={session} onAdd={() => openSiteModels(null)} />
           )}
           {session.paintingTerritory && (
             <div className="info-card blue">
@@ -943,24 +956,41 @@ export function App({
           )}
           {session.tool === 'factions' && (
             <>
-              <Button
-                className="full primary"
-                icon={Plus}
-                onClick={() => {
-                  session.setFactionMode('inspect');
-                  session.change('新增势力', (d) => {
-                    const id = d.nextId++;
-                    d.factions.push({
-                      id,
-                      name: `势力 ${d.factions.length + 1}`,
-                      color: ['#6696aa', '#bd8d62', '#969a6a', '#a9839d'][d.factions.length % 4],
+              <div className="surface-palette-actions">
+                <Button
+                  className="primary"
+                  icon={Plus}
+                  disabled={session.busy}
+                  onClick={() => {
+                    session.setFactionMode('inspect');
+                    session.change('新增势力', (d) => {
+                      const id = d.nextId++;
+                      d.factions.push({
+                        id,
+                        name: `势力 ${d.factions.length + 1}`,
+                        color: ['#6696aa', '#bd8d62', '#969a6a', '#a9839d'][d.factions.length % 4],
+                      });
+                      session.selectedFaction = id;
                     });
-                    session.selectedFaction = id;
-                  });
-                }}
-              >
-                新增势力
-              </Button>
+                  }}
+                >
+                  新增势力
+                </Button>
+                <Button
+                  className="danger"
+                  icon={Trash2}
+                  disabled={
+                    session.busy || !doc.factions.some((f) => f.id === session.selectedFaction)
+                  }
+                  onClick={() => {
+                    const id = session.selectedFaction;
+                    if (id && window.confirm('删除势力后，成员据点与辖区将保留。继续？'))
+                      session.deleteFaction(id);
+                  }}
+                >
+                  删除势力
+                </Button>
+              </div>
               <div className="list-heading">
                 势力列表 <span>{doc.factions.length}</span>
               </div>
@@ -1033,15 +1063,17 @@ export function App({
         </section>
         <aside className="inspector" ref={inspectorElement}>
           <div className="panel-heading">
-            <h2>
-              {session.tool === 'overview'
-                ? '地图设置'
-                : site
-                  ? '据点属性'
-                  : tree
-                    ? '树木属性'
-                    : '工具属性'}
-            </h2>
+            <h2>{inspector.title}</h2>
+            {inspector.showModelHelp && (
+              <HelpTip
+                label={session.tool === 'trees' ? '树木属性' : '草丛属性'}
+                text={
+                  session.tool === 'trees'
+                    ? '点击模型预览打开资源库，替换当前图层的模型及已有树木。添加、删除图层和替换模型均可撤销。'
+                    : '点击模型预览打开资源库，替换当前草丛图层模型并保留密度分布。添加、删除和替换均可撤销。'
+                }
+              />
+            )}
             <SlidersHorizontal size={16} />
           </div>
           {session.tool === 'overview' ? (
@@ -1052,238 +1084,289 @@ export function App({
             />
           ) : (
             <>
-              {session.tool !== 'terrain' && session.tool !== 'surface' && (
-                <InspectorActions session={session} />
-              )}
+              {inspector.showActions && <InspectorActions session={session} />}
               <div className="inspector-content">
-                {['terrain', 'surface', 'trees', 'grass'].includes(session.tool) &&
-                  !(session.tool === 'trees' && session.treeMode === 'select') && (
-                    <>
-                      <Group title="画刷设置" tag="BRUSH">
-                        <Slider
-                          label="半径"
-                          value={b.radius}
-                          min={4}
-                          max={200}
-                          unit="m"
-                          onChange={(v) => updateBrush('radius', v)}
-                        />
-                        {['terrain', 'surface'].includes(session.tool) && (
-                          <Slider
-                            label="强度"
-                            value={b.strength * 100}
-                            min={1}
-                            max={100}
-                            unit="%"
-                            onChange={(v) => updateBrush('strength', v / 100)}
-                          />
-                        )}
-                        <Slider
-                          label="边缘衰减"
-                          value={b.falloff * 100}
-                          min={1}
-                          max={100}
-                          unit="%"
-                          onChange={(v) => updateBrush('falloff', v / 100)}
-                        />
-                        {session.tool === 'terrain' && b.terrainMode === 'flatten' && (
-                          <NumberField
-                            label="目标高度 (m)"
-                            value={b.height}
-                            min={0}
-                            max={256}
-                            onChange={(v) => updateBrush('height', v)}
-                          />
-                        )}
-                      </Group>
-                      {session.tool === 'surface' && (
-                        <SurfaceInspector
-                          session={session}
-                          onTexture={(kind) => {
-                            setTextureTarget({
-                              layerId:
-                                session.doc.surfaceMaterial.layers[session.brush.surfaceLayer].id,
-                              kind,
-                            });
-                            setResourceTab('textures');
-                            setModal('resources');
-                          }}
-                        />
-                      )}
-                      {(session.tool === 'trees' || session.tool === 'grass') && (
-                        <Group title="分布与避让">
-                          <Slider
-                            label={session.tool === 'trees' ? '密度 · 株/100m²' : '密度 · 丛/m²'}
-                            value={session.tool === 'trees' ? b.treeDensity : b.grassDensity}
-                            min={0.1}
-                            max={session.tool === 'trees' ? 20 : 4}
-                            step={0.1}
-                            onChange={(v) =>
-                              updateBrush(
-                                session.tool === 'trees' ? 'treeDensity' : 'grassDensity',
-                                v,
-                              )
-                            }
-                          />
-                          <div className="inline-fields">
-                            <NumberField
-                              label="缩放下限"
-                              value={b.minScale}
-                              min={0.3}
-                              max={b.maxScale}
-                              step={0.1}
-                              onChange={(v) => updateBrush('minScale', v)}
-                            />
-                            <NumberField
-                              label="缩放上限"
-                              value={b.maxScale}
-                              min={b.minScale}
-                              max={3}
-                              step={0.1}
-                              onChange={(v) => updateBrush('maxScale', v)}
-                            />
-                          </div>
-                          <Slider
-                            label="最大坡度"
-                            value={b.maxSlope}
-                            min={0}
-                            max={60}
-                            unit="°"
-                            onChange={(v) => updateBrush('maxSlope', v)}
-                          />
-                          {session.tool === 'trees' && (
+                {inspector.message && <p className="empty">{inspector.message}</p>}
+                {inspector.showProperties && (
+                  <>
+                    {(session.tool === 'trees' || session.tool === 'grass') &&
+                      !(session.tool === 'trees' && session.treeMode === 'select') &&
+                      session.brushAsset(session.tool === 'trees' ? 'tree' : 'grass') &&
+                      (() => {
+                        const kind = session.tool === 'trees' ? 'tree' : 'grass';
+                        const asset = session.brushAsset(kind)!;
+                        return (
+                          <Group title="模型预览">
+                            <button
+                              type="button"
+                              className="tree-model-preview"
+                              aria-label={
+                                kind === 'tree'
+                                  ? '打开资源库切换树木模型'
+                                  : '打开资源库切换草丛模型'
+                              }
+                              onClick={() => {
+                                setVegetationModelTarget({
+                                  kind,
+                                  layerId:
+                                    kind === 'tree'
+                                      ? session.treeLayer!.id
+                                      : String(session.grassLayer!.id),
+                                  version: session.documentVersion,
+                                });
+                                setCategory(kind);
+                                setResourceId(asset.id);
+                                setSearch('');
+                                setImportedTexture(null);
+                                setTextureTarget(null);
+                                setResourceTab('models');
+                                setModal('resources');
+                              }}
+                            >
+                              <AssetPreview asset={asset} />
+                              <span>{asset.name}</span>
+                              <small>点击预览切换模型</small>
+                            </button>
+                          </Group>
+                        );
+                      })()}
+                    {['terrain', 'surface', 'trees', 'grass'].includes(session.tool) &&
+                      !(session.tool === 'trees' && session.treeMode === 'select') && (
+                        <>
+                          <Group title="画刷设置" tag="BRUSH">
                             <Slider
-                              label="最小间距"
-                              value={b.spacing}
-                              min={1}
-                              max={20}
+                              label="半径"
+                              value={b.radius}
+                              min={4}
+                              max={200}
                               unit="m"
-                              onChange={(v) => updateBrush('spacing', v)}
+                              onChange={(v) => updateBrush('radius', v)}
+                            />
+                            {['terrain', 'surface'].includes(session.tool) && (
+                              <Slider
+                                label="强度"
+                                value={b.strength * 100}
+                                min={1}
+                                max={100}
+                                unit="%"
+                                onChange={(v) => updateBrush('strength', v / 100)}
+                              />
+                            )}
+                            <Slider
+                              label="边缘衰减"
+                              value={b.falloff * 100}
+                              min={1}
+                              max={100}
+                              unit="%"
+                              onChange={(v) => updateBrush('falloff', v / 100)}
+                            />
+                            {session.tool === 'terrain' && b.terrainMode === 'flatten' && (
+                              <NumberField
+                                label="目标高度 (m)"
+                                value={b.height}
+                                min={0}
+                                max={256}
+                                onChange={(v) => updateBrush('height', v)}
+                              />
+                            )}
+                          </Group>
+                          {session.tool === 'surface' && (
+                            <SurfaceInspector
+                              session={session}
+                              onTexture={(kind) => {
+                                setVegetationModelTarget(null);
+                                setImportedTexture(null);
+                                setTextureTarget({
+                                  layerId:
+                                    session.doc.surfaceMaterial.layers[session.brush.surfaceLayer]
+                                      .id,
+                                  kind,
+                                });
+                                setResourceTab('textures');
+                                setModal('resources');
+                              }}
                             />
                           )}
-                          <div className="check-line">
-                            <Check size={13} /> 自动避让水域和据点模型
-                          </div>
-                          <div className="check-line">
-                            <Check size={13} /> 地形变化后重新贴地
-                          </div>
-                        </Group>
+                          {(session.tool === 'trees' || session.tool === 'grass') && (
+                            <Group title="分布与避让">
+                              <Slider
+                                label={
+                                  session.tool === 'trees' ? '密度 · 株/100m²' : '密度 · 丛/m²'
+                                }
+                                value={session.tool === 'trees' ? b.treeDensity : b.grassDensity}
+                                min={0.1}
+                                max={session.tool === 'trees' ? 20 : 4}
+                                step={0.1}
+                                onChange={(v) =>
+                                  updateBrush(
+                                    session.tool === 'trees' ? 'treeDensity' : 'grassDensity',
+                                    v,
+                                  )
+                                }
+                              />
+                              <div className="inline-fields">
+                                <NumberField
+                                  label="缩放下限"
+                                  value={b.minScale}
+                                  min={0.3}
+                                  max={b.maxScale}
+                                  step={0.1}
+                                  onChange={(v) => updateBrush('minScale', v)}
+                                />
+                                <NumberField
+                                  label="缩放上限"
+                                  value={b.maxScale}
+                                  min={b.minScale}
+                                  max={3}
+                                  step={0.1}
+                                  onChange={(v) => updateBrush('maxScale', v)}
+                                />
+                              </div>
+                              <Slider
+                                label="最大坡度"
+                                value={b.maxSlope}
+                                min={0}
+                                max={60}
+                                unit="°"
+                                onChange={(v) => updateBrush('maxSlope', v)}
+                              />
+                              {session.tool === 'trees' && (
+                                <Slider
+                                  label="最小间距"
+                                  value={b.spacing}
+                                  min={1}
+                                  max={20}
+                                  unit="m"
+                                  onChange={(v) => updateBrush('spacing', v)}
+                                />
+                              )}
+                              <div className="check-line">
+                                <Check size={13} /> 自动避让水域和据点模型
+                              </div>
+                              <div className="check-line">
+                                <Check size={13} /> 地形变化后重新贴地
+                              </div>
+                            </Group>
+                          )}
+                          {session.tool === 'grass' && (
+                            <Group title="草层显示">
+                              <p className="tip">淡出距离 60–80 m · 预算 50,000 丛</p>
+                              <div className="overview-row">
+                                <span>当前显示</span>
+                                <b>{stats.grass.toLocaleString()} 丛</b>
+                              </div>
+                              <Button
+                                icon={Trash2}
+                                className="full"
+                                disabled={session.busy || !session.grassLayer}
+                                onClick={() => {
+                                  const id = session.grassLayer?.id;
+                                  if (
+                                    id !== undefined &&
+                                    window.confirm('清空当前草丛图层的密度？可撤销。')
+                                  )
+                                    session.change('清空草层', (doc) =>
+                                      doc.grass.find((layer) => layer.id === id)!.density.fill(0),
+                                    );
+                                }}
+                              >
+                                清空当前草层
+                              </Button>
+                            </Group>
+                          )}
+                        </>
                       )}
-                      {session.tool === 'grass' && (
-                        <Group title="草层显示">
-                          <p className="tip">淡出距离 60–80 m · 预算 50,000 丛</p>
-                          <div className="overview-row">
-                            <span>当前显示</span>
-                            <b>{stats.grass.toLocaleString()} 丛</b>
+                    {site && !session.sitePlacement && (
+                      <SiteInspector
+                        session={session}
+                        site={site}
+                        onReplace={() => openSiteModels(site.id)}
+                      />
+                    )}
+                    {(session.sitePlacement || session.movingSite) && (
+                      <Group title="放置预览">
+                        {session.sitePlacement && (
+                          <label className="text-field">
+                            据点模型
+                            <select
+                              value={session.assetId}
+                              onChange={(e) => {
+                                session.assetId = e.target.value;
+                                session.siteKind = doc.assets.find((a) => a.id === e.target.value)!
+                                  .kind as 'city' | 'fortress';
+                                session.notify();
+                              }}
+                            >
+                              {doc.assets
+                                .filter((a) => a.kind === 'city' || a.kind === 'fortress')
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                        )}
+                        <p className="tip">
+                          模型吸附六边形格心。左键点击锁定位置，再确认；可再次点击改选。
+                        </p>
+                        {session.sitePreview && (
+                          <div className="coordinate-tag">
+                            q {session.sitePreview.q} / r {session.sitePreview.r}
                           </div>
-                          <Button
-                            icon={Trash2}
-                            className="full"
-                            onClick={() => {
-                              if (window.confirm('清空当前草模型的草层密度？可撤销。'))
-                                session.change('清空草层', (d) =>
-                                  d.grass
-                                    .filter(
-                                      (g) =>
-                                        g.assetId ===
-                                        (activeAsset?.kind === 'grass'
-                                          ? activeAsset.id
-                                          : 'grass-reed'),
-                                    )
-                                    .forEach((g) => g.density.fill(0)),
-                                );
-                            }}
+                        )}
+                      </Group>
+                    )}
+                    {tree && (
+                      <Group title={`树木实例 · ${tree.id}`}>
+                        <label className="text-field">
+                          模型
+                          <select
+                            value={tree.assetId}
+                            onChange={(e) => session.replaceModel(e.target.value)}
                           >
-                            清空当前草层
-                          </Button>
-                        </Group>
-                      )}
-                    </>
-                  )}
-                {site && !session.sitePlacement && <SiteInspector session={session} site={site} />}
-                {(session.sitePlacement || session.movingSite) && (
-                  <Group title="放置预览">
-                    {session.sitePlacement && (
-                      <label className="text-field">
-                        {KIND_LABEL[session.siteKind]}模型
-                        <select
-                          value={session.assetId}
-                          onChange={(e) => {
-                            session.assetId = e.target.value;
+                            {doc.assets
+                              .filter((a) => a.kind === 'tree')
+                              .map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <Button
+                          className="full danger"
+                          icon={Trash2}
+                          onClick={() => {
+                            session.change('删除树木', (d) => {
+                              d.trees = d.trees.filter((t) => t.id !== tree.id);
+                            });
+                            session.selectedTree = null;
                             session.notify();
                           }}
                         >
-                          {doc.assets
-                            .filter((a) => a.kind === session.siteKind)
-                            .map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
+                          删除该实例
+                        </Button>
+                      </Group>
                     )}
-                    <p className="tip">
-                      模型吸附六边形格心。左键点击锁定位置，再确认；可再次点击改选。
-                    </p>
-                    {session.sitePreview && (
-                      <div className="coordinate-tag">
-                        q {session.sitePreview.q} / r {session.sitePreview.r}
-                      </div>
+                    {session.tool === 'river' && (
+                      <RiverInspector
+                        key={
+                          session.riverPreview
+                            ? `preview-${session.riverPreview.id}`
+                            : `${session.selectedRiver}-${doc.rivers.find((r) => r.id === session.selectedRiver)?.name}`
+                        }
+                        session={session}
+                      />
                     )}
-                  </Group>
-                )}
-                {tree && (
-                  <Group title={`树木实例 · ${tree.id}`}>
-                    <label className="text-field">
-                      模型
-                      <select
-                        value={tree.assetId}
-                        onChange={(e) => session.replaceModel(e.target.value)}
-                      >
-                        {doc.assets
-                          .filter((a) => a.kind === 'tree')
-                          .map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                    <Button
-                      className="full danger"
-                      icon={Trash2}
-                      onClick={() => {
-                        session.change('删除树木', (d) => {
-                          d.trees = d.trees.filter((t) => t.id !== tree.id);
-                        });
-                        session.selectedTree = null;
-                        session.notify();
-                      }}
-                    >
-                      删除该实例
-                    </Button>
-                  </Group>
-                )}
-                {session.tool === 'river' && (
-                  <RiverInspector
-                    key={
-                      session.riverPreview
-                        ? `preview-${session.riverPreview.id}`
-                        : `${session.selectedRiver}-${doc.rivers.find((r) => r.id === session.selectedRiver)?.name}`
-                    }
-                    session={session}
-                  />
-                )}
-                {session.tool === 'factions' && (
-                  <FactionInspector
-                    key={session.selectedFaction}
-                    session={session}
-                    onLocate={(id) => viewport.current?.focusSite(id)}
-                  />
-                )}
-                {session.tool === 'sites' && !site && !session.sitePlacement && (
-                  <p className="empty">点击城池或要塞，或从左侧据点列表选择。</p>
+                    {session.tool === 'factions' && (
+                      <FactionInspector
+                        key={session.selectedFaction}
+                        session={session}
+                        onLocate={(id) => viewport.current?.focusSite(id)}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </>
@@ -1446,27 +1529,23 @@ export function App({
           wide
           title="资源库"
           subtitle="管理当前工程的模型与贴图资源。"
-          onClose={() => setModal(null)}
+          onClose={() => {
+            setVegetationModelTarget(null);
+            setSiteModelTarget(null);
+            setModal(null);
+          }}
         >
           {resourceTab === 'textures' ? (
             <TextureLibrary
               session={session}
               target={textureTarget}
               navigation={resourceNavigation}
+              imported={importedTexture}
               onClose={() => setModal(null)}
             />
           ) : (
             <div className="resource-layout">
-              {resourceNavigation(
-                <Button
-                  icon={Plus}
-                  className="full"
-                  onClick={() => void importModel(category)}
-                  disabled={session.busy}
-                >
-                  导入静态 GLB
-                </Button>,
-              )}
+              {resourceNavigation}
               <div className="resource-center">
                 <label className="search-box">
                   <Search size={16} />
@@ -1478,7 +1557,12 @@ export function App({
                 </label>
                 <div className="resource-grid">
                   {doc.assets
-                    .filter((a) => a.kind === category && a.name.includes(search))
+                    .filter(
+                      (a) =>
+                        (category === 'city' || category === 'fortress'
+                          ? a.kind === 'city' || a.kind === 'fortress'
+                          : a.kind === category) && a.name.includes(search),
+                    )
                     .map((a) => (
                       <button
                         key={a.id}
@@ -1514,14 +1598,71 @@ export function App({
                     />
                     <Button
                       className="primary full"
+                      disabled={
+                        session.busy ||
+                        (!!siteModelTarget &&
+                          ((resource.kind !== 'city' && resource.kind !== 'fortress') ||
+                            siteModelTarget.version !== session.documentVersion ||
+                            (siteModelTarget.id !== null &&
+                              !doc.sites.some((site) => site.id === siteModelTarget.id)))) ||
+                        (!!vegetationModelTarget &&
+                          (resource.kind !== vegetationModelTarget.kind ||
+                            vegetationModelTarget.version !== session.documentVersion ||
+                            (vegetationModelTarget.layerId !== null &&
+                              !(vegetationModelTarget.kind === 'tree'
+                                ? doc.treeLayers?.some(
+                                    (layer) => layer.id === vegetationModelTarget.layerId,
+                                  )
+                                : doc.grass.some(
+                                    (layer) => String(layer.id) === vegetationModelTarget.layerId,
+                                  )))))
+                      }
                       onClick={() => {
-                        session.setAsset(resource.id);
-                        setModal(null);
+                        if (siteModelTarget) {
+                          if (siteModelTarget.id === null) session.setAsset(resource.id);
+                          else {
+                            session.selectSite(siteModelTarget.id);
+                            session.replaceModel(resource.id);
+                          }
+                        } else if (vegetationModelTarget) {
+                          if (vegetationModelTarget.kind === 'grass') {
+                            if (vegetationModelTarget.layerId === null)
+                              session.addGrassLayer(resource.id);
+                            else
+                              session.replaceGrassLayerModel(
+                                Number(vegetationModelTarget.layerId),
+                                resource.id,
+                              );
+                          } else if (vegetationModelTarget.layerId === null)
+                            session.addTreeLayer(resource.id);
+                          else
+                            session.replaceTreeLayerModel(
+                              vegetationModelTarget.layerId,
+                              resource.id,
+                            );
+                        } else session.setAsset(resource.id);
+                        if (!session.error) {
+                          setVegetationModelTarget(null);
+                          setSiteModelTarget(null);
+                          setModal(null);
+                        }
                       }}
                     >
-                      用于当前工具
+                      {siteModelTarget
+                        ? siteModelTarget.id === null
+                          ? '选择模型并放置'
+                          : '替换据点模型'
+                        : vegetationModelTarget
+                          ? vegetationModelTarget.layerId === null
+                            ? vegetationModelTarget.kind === 'tree'
+                              ? '添加树木图层'
+                              : '添加草丛图层'
+                            : '替换图层模型'
+                          : '用于当前工具'}
                     </Button>
-                    {((site && site.kind === resource.kind) ||
+                    {((site &&
+                      !siteModelTarget &&
+                      (resource.kind === 'city' || resource.kind === 'fortress')) ||
                       (tree && resource.kind === 'tree')) && (
                       <Button
                         className="full"
@@ -1554,6 +1695,20 @@ export function App({
           )}
         </Modal>
       )}
+      {choosingResourceImport && (
+        <ResourceImportDialog
+          category={
+            resourceTab === 'textures' ? 'textures' : category === 'fortress' ? 'city' : category
+          }
+          textureKind={textureTarget?.kind}
+          onClose={() => setChoosingResourceImport(false)}
+          onChoose={(chosen, kind) => {
+            setChoosingResourceImport(false);
+            if (chosen === 'textures') void importTexture(kind);
+            else void importModel(chosen);
+          }}
+        />
+      )}
       {importDraft && (
         <Modal
           title="导入模型"
@@ -1572,7 +1727,7 @@ export function App({
         </Modal>
       )}
       {importFailure && (
-        <Modal title="模型导入失败" onClose={() => setImportFailure('')}>
+        <Modal title="资源导入失败" onClose={() => setImportFailure('')}>
           <div className="modal-body">
             <p role="alert" className="error-text">
               {importFailure}
@@ -1606,7 +1761,7 @@ export function App({
                   { key: 'trees', label: '树木模型与实例' },
                   { key: 'grass', label: '草丛密度与生成参数' },
                   { key: 'water', label: '河流与水面' },
-                  { key: 'sites', label: '城池／要塞模型' },
+                  { key: 'sites', label: '据点模型' },
                   { key: 'logic', label: '据点、势力与逐格归属' },
                 ] as { key: keyof typeof exportOptions; label: string }[]
               ).map((option) => (

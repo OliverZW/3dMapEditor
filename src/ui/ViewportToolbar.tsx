@@ -19,7 +19,7 @@ const LAYERS: { key: keyof ViewSettings; label: string; icon: LucideIcon; shortc
   { key: 'trees', label: '树木', icon: Trees },
   { key: 'grass', label: '草丛', icon: Sprout },
   { key: 'water', label: '河流水面', icon: Waves },
-  { key: 'sites', label: '城池与要塞', icon: Castle },
+  { key: 'sites', label: '据点', icon: Castle },
   { key: 'territories', label: '选中据点范围', icon: Shield },
   { key: 'factions', label: '势力范围', icon: Flag },
 ];

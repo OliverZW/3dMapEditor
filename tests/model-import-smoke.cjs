@@ -43,7 +43,11 @@ const { randomUUID } = require('node:crypto');
     const importer = page.getByRole('dialog', { name: '导入模型' });
     const choose = async (file) => {
       const pending = page.waitForEvent('filechooser');
-      await library.getByRole('button', { name: '导入静态 GLB' }).click();
+      await library.getByRole('button', { name: '导入资源', exact: true }).click();
+      await page
+        .getByRole('dialog', { name: '导入资源', exact: true })
+        .getByRole('button', { name: '选择文件' })
+        .click();
       await (await pending).setFiles(file);
     };
     const source = path.resolve('editor-assets/models/pine-tree.glb');
@@ -54,7 +58,7 @@ const { randomUUID } = require('node:crypto');
     });
     await page.locator('.status-message').filter({ hasText: 'GLB' }).waitFor();
     assert.equal(await importer.count(), 0);
-    const failure = page.getByRole('dialog', { name: '模型导入失败' });
+    const failure = page.getByRole('dialog', { name: '资源导入失败' });
     await failure.getByRole('alert').filter({ hasText: 'GLB' }).waitFor();
     await failure.getByRole('button', { name: '知道了' }).click();
     await choose(source);

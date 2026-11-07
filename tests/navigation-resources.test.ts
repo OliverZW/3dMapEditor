@@ -182,7 +182,7 @@ describe('工具选择和资源列表', () => {
       session.pointerDown({ x: 0, z: 0 }, false);
       session.pointerMove({ x: 10, z: 10 }, false);
       session.endStroke();
-      expect(session.error).toContain('先导入模型');
+      expect(session.error).toContain('先添加图层');
       expect(session.dirty).toBe(false);
     }
     const grass = createDocument().assets.find((asset) => asset.kind === 'grass')!;
@@ -196,7 +196,10 @@ describe('工具选择和资源列表', () => {
     const session = new EditorSession(),
       counts = assetReferenceCounts(session.doc);
     const id = session.doc.trees[0].assetId;
-    expect(counts.get(id)).toBe(session.doc.trees.filter((item) => item.assetId === id).length);
+    expect(counts.get(id)).toBe(
+      session.doc.trees.filter((item) => item.assetId === id).length +
+        session.doc.treeLayers!.filter((layer) => layer.assetId === id).length,
+    );
     const range = virtualRange(10000, 6400, 256);
     expect(range.end - range.start).toBeLessThanOrEqual(12);
     expect(range.start).toBe(96);

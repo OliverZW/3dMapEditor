@@ -1,10 +1,17 @@
-import { Trash2 } from 'lucide-react';
 import type { EditorSession } from '../application/editor-session';
 import type { Site } from '../core/types';
 import { getSiteCells, hexIndex } from '../core/hex';
 import { Button, Group, Slider, NumberField } from './controls';
-const KIND_LABEL = { city: '城池', fortress: '要塞' };
-export function SiteInspector({ session, site }: { session: EditorSession; site: Site }) {
+import { AssetPreview } from './AssetPreview';
+export function SiteInspector({
+  session,
+  site,
+  onReplace,
+}: {
+  session: EditorSession;
+  site: Site;
+  onReplace: () => void;
+}) {
   const doc = session.doc,
     b = session.brush;
   function updateBrush(key: 'hexRadius', value: number) {
@@ -13,7 +20,7 @@ export function SiteInspector({ session, site }: { session: EditorSession; site:
   }
   return (
     <>
-      <Group title={`${KIND_LABEL[site.kind]} · ${site.id}`}>
+      <Group title={`据点 · ${site.id}`}>
         <label className="text-field">
           名称
           <input
@@ -29,22 +36,23 @@ export function SiteInspector({ session, site }: { session: EditorSession; site:
             }}
           />
         </label>
-        <label className="text-field">
-          模型
-          <select
-            aria-label="据点模型"
-            value={site.assetId}
-            onChange={(e) => session.replaceModel(e.target.value)}
-          >
-            {doc.assets
-              .filter((a) => a.kind === site.kind)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-          </select>
-        </label>
+        {(() => {
+          const asset = doc.assets.find((a) => a.id === site.assetId);
+          return (
+            asset && (
+              <button
+                type="button"
+                className="tree-model-preview"
+                aria-label="打开资源库切换据点模型"
+                onClick={onReplace}
+              >
+                <AssetPreview asset={asset} />
+                <span>{asset.name}</span>
+                <small>点击预览切换模型</small>
+              </button>
+            )
+          );
+        })()}
         <label className="text-field">
           所属势力
           <select
@@ -122,15 +130,6 @@ export function SiteInspector({ session, site }: { session: EditorSession; site:
           清空辖区，保留中心
         </Button>
       </Group>
-      <Button
-        className="danger full"
-        icon={Trash2}
-        onClick={() => {
-          if (window.confirm('删除据点并释放其中心与全部辖区？可撤销。')) session.deleteSite();
-        }}
-      >
-        删除{KIND_LABEL[site.kind]}
-      </Button>
     </>
   );
 }

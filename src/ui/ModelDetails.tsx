@@ -4,7 +4,7 @@ import { AssetPreview } from './AssetPreview';
 import { Group, NumberField, Button } from './controls';
 import { Trash2 } from 'lucide-react';
 import { assetReferenceLocations, isBuiltinAsset } from '../core/assets';
-const KIND_LABEL = { city: '城池', fortress: '要塞', tree: '树木', grass: '草丛' };
+const KIND_LABEL = { city: '据点', fortress: '据点', tree: '树木', grass: '草丛' };
 export function ModelDetails({
   session,
   resource,

@@ -55,7 +55,7 @@ describe('工程自有模型与引用', () => {
     });
     expect(session.doc.owners).toEqual(owners);
     expect(assetReferenceLocations(session.doc, asset.id)).toContain(
-      `城池：${site.name}（ID ${site.id}）`,
+      `据点：${site.name}（ID ${site.id}）`,
     );
     expect(session.deleteAsset(asset.id)).toBe(false);
     session.undo();
@@ -63,6 +63,28 @@ describe('工程自有模型与引用', () => {
     session.redo();
     expect(session.doc.sites.find((item) => item.id === site.id)?.assetId).toBe(asset.id);
     expect(session.doc.owners).toEqual(owners);
+  });
+  it('据点可跨旧分类替换，备份恢复与撤销保持身份、变换和辖区', () => {
+    const session = new EditorSession();
+    const site = session.doc.sites.find((item) => item.kind === 'city')!;
+    const before = structuredClone(site);
+    const owners = session.doc.owners.slice();
+    const asset = session.doc.assets.find((item) => item.kind === 'fortress')!;
+    session.selectSite(site.id);
+    session.replaceModel(asset.id);
+    const expected = { ...before, kind: asset.kind, assetId: asset.id };
+    expect(session.doc.sites.find((item) => item.id === site.id)).toEqual(expected);
+    expect(session.doc.owners).toEqual(owners);
+    const restored = decodeProject(encodeProject(session.doc));
+    expect(restored.sites.find((item) => item.id === site.id)).toEqual(expected);
+    expect(restored.owners).toEqual(owners);
+    session.undo();
+    expect(session.doc.sites.find((item) => item.id === site.id)).toEqual(before);
+    session.redo();
+    expect(session.doc.sites.find((item) => item.id === site.id)).toEqual(expected);
+    session.replaceModel(session.doc.assets.find((item) => item.kind === 'tree')!.id);
+    expect(session.error).toContain('请选择据点模型');
+    expect(session.doc.sites.find((item) => item.id === site.id)).toEqual(expected);
   });
   it('树木和草丛可选择工程模型，资源同哈希去重且备份恢复基础参数', () => {
     const session = new EditorSession(createDocument());

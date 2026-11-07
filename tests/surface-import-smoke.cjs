@@ -148,13 +148,24 @@ const fs = require('node:fs/promises'),
         }, size),
         'base64',
       );
-    await library
-      .getByLabel('导入贴图', { exact: true })
-      .setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from([1, 2, 3]) });
-    await library.getByRole('alert').filter({ hasText: '无法解码' }).waitFor();
-    await library
-      .getByLabel('导入贴图', { exact: true })
-      .setInputFiles({ name: '小贴图.png', mimeType: 'image/png', buffer: await png(32) });
+    const importTexture = async (file, kind) => {
+      await library.getByRole('button', { name: '导入资源', exact: true }).click();
+      const importer = page.getByRole('dialog', { name: '导入资源', exact: true });
+      await importer.getByLabel('资源库分类', { exact: true }).selectOption('textures');
+      if (kind) await importer.getByLabel('导入贴图类型', { exact: true }).selectOption(kind);
+      const pending = page.waitForEvent('filechooser');
+      await importer.getByRole('button', { name: '选择文件', exact: true }).click();
+      await (await pending).setFiles(file);
+    };
+    await importTexture({
+      name: 'broken.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from([1, 2, 3]),
+    });
+    const failure = page.getByRole('dialog', { name: '资源导入失败' });
+    await failure.getByRole('alert').filter({ hasText: '无法解码' }).waitFor();
+    await failure.getByRole('button', { name: '知道了' }).click();
+    await importTexture({ name: '小贴图.png', mimeType: 'image/png', buffer: await png(32) });
     await library
       .locator('.texture-library-detail')
       .getByText('小贴图.png', { exact: true })
@@ -166,9 +177,7 @@ const fs = require('node:fs/promises'),
     await library.getByRole('alert').filter({ hasText: '尺寸' }).waitFor();
     await library.getByRole('button', { name: '取消', exact: true }).click();
     await page.getByRole('button', { name: '切换颜色贴图', exact: true }).click();
-    await library
-      .getByLabel('导入贴图', { exact: true })
-      .setInputFiles({ name: '蓝色贴图.png', mimeType: 'image/png', buffer: await png(1024) });
+    await importTexture({ name: '蓝色贴图.png', mimeType: 'image/png', buffer: await png(1024) });
     await library
       .locator('.texture-library-detail')
       .getByText('蓝色贴图.png', { exact: true })
@@ -190,14 +199,14 @@ const fs = require('node:fs/promises'),
     assert.equal(await library.getByRole('tablist').count(), 0);
     const categories = library.locator('.resource-nav > button');
     assert.deepEqual(await categories.locator('span').allTextContents(), [
-      '城池1',
-      '要塞1',
+      '据点2',
       '树木5',
       '草丛1',
       '贴图',
+      '导入资源',
     ]);
-    const grassBox = await categories.nth(3).boundingBox();
-    const textureBox = await categories.nth(4).boundingBox();
+    const grassBox = await categories.nth(2).boundingBox();
+    const textureBox = await categories.nth(3).boundingBox();
     assert.equal(grassBox.x, textureBox.x);
     assert(textureBox.y > grassBox.y);
     const typeFilter = library.getByLabel('贴图类型');
@@ -241,19 +250,14 @@ const fs = require('node:fs/promises'),
       .filter({ hasText: '草地 · 颜色' })
       .click();
     await page.screenshot({ path: path.join(root, 'texture-categories.png') });
-    await library
-      .locator('.resource-nav')
-      .getByRole('button', { name: '导入贴图', exact: true })
-      .click();
-    const fileChooser = page.waitForEvent('filechooser');
-    await library.getByRole('button', { name: '导入法线贴图', exact: true }).click();
-    await (
-      await fileChooser
-    ).setFiles({
-      name: '同内容法线.png',
-      mimeType: 'image/png',
-      buffer: await png(1024),
-    });
+    await importTexture(
+      {
+        name: '同内容法线.png',
+        mimeType: 'image/png',
+        buffer: await png(1024),
+      },
+      'normal',
+    );
     const details = library.locator('.texture-library-detail');
     await details.getByText('同内容法线.png', { exact: true }).waitFor();
     await details.getByText('贴图 / 法线贴图', { exact: true }).waitFor();
@@ -263,6 +267,7 @@ const fs = require('node:fs/promises'),
     );
     await library.getByRole('button', { name: '删除贴图', exact: true }).click();
     assert.equal(await library.getByRole('button', { name: '确认使用', exact: true }).count(), 0);
+    await typeFilter.selectOption('all');
     await library
       .locator('.texture-library-grid button')
       .filter({ hasText: '蓝色贴图.png' })

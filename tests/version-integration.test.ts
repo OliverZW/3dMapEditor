@@ -7,6 +7,7 @@ import { encodeProjectFiles, decodeProjectFiles } from '../src/io/project-codec'
 import { resourcePath } from '../src/io/project-resources';
 import { exportCocos } from '../src/io/cocos-export';
 import { imageHash } from '../src/io/image-validation';
+import { addTreeLayer } from '../src/core/tree-layers';
 
 it('完整地图与自定义资源目录、备份及引擎导出一致', async () => {
   const session = new EditorSession();
@@ -36,6 +37,7 @@ it('完整地图与自定义资源目录、备份及引擎导出一致', async (
     doc.surface[0] = 50;
     doc.surface[1] = 205;
     doc.trees[0].assetId = model.id;
+    doc.trees[0].layerId = addTreeLayer(doc, model.id).id;
     doc.surfaceMaterial.library = [material];
     doc.surfaceMaterial.layers[0] = { ...material, id: 'grass', materialId: material.id };
   });

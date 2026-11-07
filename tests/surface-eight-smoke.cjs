@@ -113,6 +113,13 @@ const fs = require('node:fs/promises'),
     );
     await page.screenshot({ path: path.join(root, 'eight-painted.png') });
     await page.getByRole('button', { name: '删除当前地表', exact: true }).click();
+    const deletion = page.getByRole('dialog', { name: '删除地表确认', exact: true });
+    await deletion.waitFor();
+    assert(await deletion.getByRole('button', { name: '确认删除地表', exact: true }).isDisabled());
+    await page.keyboard.press('Escape');
+    assert.equal(await deletion.count(), 0);
+    await page.getByRole('button', { name: '删除当前地表', exact: true }).click();
+
     await page.getByLabel('删除后替换地表').selectOption(map.surfaceMaterial.layers[0].id);
     await page.getByRole('button', { name: '确认删除地表', exact: true }).click();
     assert.equal(await page.locator('.surface-grid button').count(), 7);

@@ -14,6 +14,7 @@ type Metadata = Pick<
   | 'nextId'
   | 'assets'
   | 'trees'
+  | 'treeLayers'
   | 'rivers'
   | 'sites'
   | 'factions'
@@ -65,6 +66,7 @@ function metadata(doc: MapDocument): Metadata {
     nextId: doc.nextId,
     assets: doc.assets.map((a) => ({ ...a })),
     trees: structuredClone(doc.trees),
+    treeLayers: doc.treeLayers?.map((layer) => ({ ...layer })),
     rivers: structuredClone(doc.rivers),
     sites: structuredClone(doc.sites),
     factions: structuredClone(doc.factions),

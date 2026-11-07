@@ -8,6 +8,7 @@ export function VirtualList<T>({
   selectedId,
   onSelect,
   label,
+  emptyText = '没有符合条件的模型',
 }: {
   items: T[];
   getId: (item: T) => string;
@@ -15,6 +16,7 @@ export function VirtualList<T>({
   selectedId?: string;
   onSelect: (item: T) => void;
   label: string;
+  emptyText?: string;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0),
@@ -73,7 +75,7 @@ export function VirtualList<T>({
           </div>
         ))}
       </div>
-      {!items.length && <p className="empty">没有符合条件的模型</p>}
+      {!items.length && <p className="empty">{emptyText}</p>}
     </div>
   );
 }

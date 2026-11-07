@@ -89,11 +89,8 @@ export function MapOverview({ session }: { session: EditorSession }) {
         </div>
         <div>
           <Castle size={18} />
-          <span>城池／要塞</span>
-          <b>
-            {doc.sites.filter((site) => site.kind === 'city').length} ／{' '}
-            {doc.sites.filter((site) => site.kind === 'fortress').length}
-          </b>
+          <span>据点</span>
+          <b>{doc.sites.length}</b>
         </div>
       </div>
       <Group title="工程数据">
